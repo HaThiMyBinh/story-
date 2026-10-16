@@ -1,72 +1,94 @@
-# US6 — Tỷ lệ hoàn thành chương trình
+# US6 — Kết quả hoàn thành riêng từng chương trình
 
-## Bước 0: định nghĩa từ dữ liệu đang có
-Đã đọc schema.sql, seed_data.sql và các luồng programs, finalReports, evaluations, attendance, weeklyReports trước khi triển khai.
+## Quyết định nghiệp vụ đã chốt
+Một người chỉ tham gia một chương trình tại một thời điểm, nhưng sau chương trình A có thể được HR xếp sang B. Vì vậy kết quả phải gắn với từng cặp (program_id, intern_id), không dùng intern_profiles.status. HR xác nhận kết quả riêng từng chương trình; không tự đặt ngưỡng điểm hoặc tự suy ra kết quả từ báo cáo/điểm danh.
 
-- intern_profiles.status là VARCHAR, UI và US5 hiện dùng Đang thực tập / Hoàn thành / Tạm dừng. Hoàn thành trong báo cáo này nghĩa là TRIM(status) = Hoàn thành, không tự cập nhật dữ liệu.
-- program_interns là quan hệ thành viên HR xếp; listProgramInterns và phạm vi PROGRAM của listFinalReportInterns cũng dùng bảng này. Dùng quan hệ này, không suy ra thành viên từ internship_contracts.program_id. Hồ sơ chưa có quan hệ nằm ở nhóm Chưa cập nhật (chưa xếp chương trình).
-- internship_programs.status DRAFT/OPEN/ONGOING/CLOSED là trạng thái chương trình, không phải kết quả từng người.
-- final_reports.status DRAFT/FINALIZED là trạng thái tài liệu tổng hợp và snapshot, không phải chứng nhận hoàn thành của từng người.
-- intern_evaluations có điểm kỹ năng/thái độ 1–5, không có cột đạt/rớt hoặc ngưỡng hoàn thành. Không tự đặt ngưỡng.
-- attendance COMPLETED chỉ là ca đã check-out; weekly_reports SUBMITTED/LATE/MISSING và intern_schedules COMPLETED là tiến độ riêng, không phải kết quả toàn chương trình.
-- Schema không có kết quả theo từng cặp program/intern. Vì vậy US6 là tỷ lệ trạng thái hồ sơ hiện tại trong tập thành viên chương trình, không phải kết quả lịch sử độc lập cho từng khóa. Không suy ra hoàn thành từ ngày kết thúc, hợp đồng hay báo cáo được chốt.
-- seed_data.sql chỉ nạp vai trò/quyền/ứng viên, không nạp intern_profiles hoặc program_interns. Trên database chỉ có schema + seed này, US6 phải trả tổng 0, tỷ lệ 0.
+Đã đọc schema.sql, seed_data.sql, programs, finalReports, evaluations, attendance và weeklyReports trước thiết kế:
+- program_interns là quan hệ thành viên do HR xếp, phù hợp luồng listProgramInterns hiện tại.
+- intern_profiles.status là trạng thái hồ sơ toàn cục, không đủ lưu lịch sử A/B.
+- internship_programs.status là vòng đời DRAFT/OPEN/ONGOING/CLOSED, không phải kết quả từng người.
+- final_reports FINALIZED là chốt tài liệu tổng hợp; điểm evaluations không có ngưỡng đạt; attendance COMPLETED chỉ là ca đã check-out; weekly_reports và intern_schedules là tiến độ riêng.
+- seed_data.sql chỉ có vai trò/quyền/ứng viên, không có kết quả chương trình. Không đổi seed_data.sql hoặc tự chuyển trạng thái cũ sang kết quả mới.
 
-## Quy tắc thống kê
-- Tổng chung và nhóm mentor đếm DISTINCT intern id; nhóm chương trình đếm mỗi người một lần mỗi chương trình. Người thuộc nhiều chương trình được tính ở nhiều nhóm nên tổng các nhóm chương trình có thể vượt tổng chung.
-- Đã hoàn thành: status trim đúng Hoàn thành; đang thực tập: đúng Đang thực tập; tạm dừng/không hoàn thành: tất cả trường hợp còn lại. unknownStatus đếm riêng trạng thái ngoài ba trạng thái chuẩn, bao gồm NULL/rỗng, nhưng vẫn nằm trong nhóm chưa hoàn thành. Không tạo trạng thái mới trong DB.
-- Tỷ lệ = completed / total * 100, làm tròn 1 chữ số; total=0 trả 0. Sắp xếp theo tỷ lệ giảm dần, hòa theo tên tiếng Việt rồi khóa.
-- from/to bao gồm hai đầu và áp dụng DATE(intern_profiles.created_at), giống US5; không phải ngày hoàn thành (không có cột này).
-- programId lọc ID thành viên program_interns. q tìm chuỗi literal trong tên/MSSV/trường/mentor/tên chương trình; escape %, _ và backslash. Khi q chỉ khớp tên chương trình, chỉ các quan hệ chương trình khớp mới nằm trong tập kết quả.
-- Mentor được nhóm theo mentor_id; tên cũ khi không có mentor_id được gom theo normalizeKey như US5. Thiếu tên được gom Chưa cập nhật. ID/khóa nhóm được dùng cho drill-down, không dùng nhãn tên làm điều kiện lọc.
-- Không có nhóm tổng hợp Khác hoặc cắt top-N. Chi tiết lấy đúng tập dữ liệu và quy tắc nhóm của thống kê, phân trang sau khi loại trùng intern id.
+## Dữ liệu được bổ sung
+Thêm vào program_interns bằng migration cộng thêm, chạy lại được:
+- completion_status: IN_PROGRESS (mặc định), COMPLETED, PAUSED, NOT_COMPLETED.
+- completed_at: thời điểm HR xác nhận COMPLETED, không nhận ngày do client gửi.
+- completed_by: ID HR chốt COMPLETED/NOT_COMPLETED, lấy từ người đăng nhập.
+- completion_note: ghi chú tối đa 500 ký tự; NOT_COMPLETED bắt buộc có lý do.
+- result_updated_at: thời điểm cập nhật kết quả.
+- result_mentor_id/result_mentor_name: chụp mentor khi chốt, để đổi mentor ở B không đổi phân tích kết quả A.
 
-## Cấu trúc và API
-- backend/routes/completionRate.routes.js → controllers/completionRate.controller.js → services/completionRate.service.js → getCompletionRateRows/getCompletionRatePrograms trong db.js.
-- GET /api/reports/completion-rate: programId, status, from, to, q.
-- GET /api/reports/completion-rate/interns: các bộ lọc trên + groupBy=program|mentor, groupKey, page, pageSize (1–100). Bắt buộc groupBy/groupKey. Khóa lấy từ kết quả báo cáo, không đoán từ nhãn.
-- GET /api/reports/completion-rate/export.csv: cùng bộ lọc với báo cáo; BOM đúng một lần, dùng csvCell hiện có.
-- Chỉ HR có VIEW_REPORTS; anonymous 401, Admin/Mentor/Intern 403 dù có quyền khác. Header private, no-store được đặt trước xác thực, cả khi lỗi.
-- Report Hub có tab tab-completion-rate, bộ lọc, 5 thẻ tổng quan, bảng kèm thanh tỷ lệ cho chương trình/mentor, modal phân trang, đóng Esc, giữ focus, xuất CSV theo đúng bộ lọc đã áp dụng. Không ghép nhãn vào onclick; dữ liệu được gán textContent/DOM properties, ô bảng dùng escapeHtml.
-- Không thêm dependency; package-lock.json, schema.sql và seed_data.sql giữ nguyên. API mới chỉ SELECT, không migration hoặc ghi dữ liệu.
+Các lượt cũ được thêm trạng thái mặc định IN_PROGRESS, completed_at/result_updated_at để NULL. Không sao chép trạng thái Hoàn thành ở hồ sơ vào mọi chương trình; HR phải rà soát. Giao diện đếm các lượt chưa có cập nhật kết quả. IN_PROGRESS là lượt chưa chốt, bao gồm cả trường hợp được xếp trước ngày bắt đầu.
 
-## Tương thích MySQL 8
-SQL báo cáo không GROUP BY nên không phụ thuộc việc tắt ONLY_FULL_GROUP_BY. Tham số hóa tất cả bộ lọc, escape LIKE %, _ và backslash.
+## Quy trình HR
+1. Đặt đủ ngày bắt đầu/kết thúc chương trình trước khi xếp người.
+2. Chương trình thực tập → Thực tập sinh & mentor → cột Kết quả chương trình.
+3. Chọn Đang thực tập / Hoàn thành / Tạm dừng / Không hoàn thành, nhập ghi chú và Lưu kết quả. Khi chốt có hộp xác nhận.
+4. Chỉ HR có VIEW_REPORTS được ghi kết quả. Chỉ chốt khi chương trình có đủ lịch, đã bắt đầu và có status ONGOING/CLOSED. HR chịu trách nhiệm xác nhận, không tự động đánh giá đạt theo điểm/điểm danh.
+5. COMPLETED và NOT_COMPLETED là kết quả đã chốt: không ghi đè; gửi lại cùng trạng thái/ghi chú là idempotent và không đổi thời gian/người chốt. PAUSED có thể quay lại IN_PROGRESS.
+6. A được giữ nguyên khi xếp B. Trạng thái hồ sơ và mentor hiện tại thay đổi không ghi đè kết quả A.
 
-Khi thử schema gốc trên MySQL 8 mặc định, phát hiện lỗi có sẵn: mentors/users dùng utf8mb4_0900_ai_ci nhưng intern_profiles dùng utf8mb4_unicode_ci, làm initDatabase dừng ở backfillInternMentorIds/syncInternsWithAccounts. Bổ sung COLLATE utf8mb4_unicode_ci vào các phép so sánh tên/email/điện thoại sẵn có trong hai hàm này và COALESCE mentor của US6. Không thêm lệnh ghi hay đổi schema. Đã khởi tạo thành công một DB kiểm thử mới từ schema/seed gốc mà không ALTER collation các bảng, rồi chạy lại API.
+Để bảo vệ lịch sử, ứng dụng chặn gỡ thành viên đã chốt, xóa chương trình có thành viên, đổi ngày chương trình có kết quả chốt, xóa hồ sơ/tài khoản Intern có kết quả chốt. Không có quy trình sửa lại kết quả đã chốt trong phiên bản này; cần nghiệp vụ hiệu chỉnh có lưu vết nếu muốn bổ sung sau.
 
-## Chạy kiểm thử
-Trong backend, sau npm ci:
-```sh
-npm run test:completion-rate-unit
-npm run test:completion-rate-api
-node tests/run_all.js --only completion-rate
-```
-API cần backend và MySQL được cấu hình qua DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME hoặc db_config.json; TEST_PORT/TEST_BASE_URL chọn backend kiểm thử. Nên dùng DB kiểm thử riêng, không có tiến trình ghi đồng thời. Test API chỉ đọc dữ liệu, không tạo/xóa hồ sơ hay sửa quyền. Runner bỏ bước cleanup toàn DB khi chỉ chọn API US6.
+## Một chương trình trong một khoảng thời gian
+- Kiểm tra giao hai khoảng ngày, tính cả ngày đầu/cuối. A kết thúc 31/01 thì B bắt đầu 01/02 được; B bắt đầu 31/01 bị 409.
+- Áp dụng cả khi thêm lẻ/thêm nhiều và sửa ngày chương trình có thành viên. Một người xung đột làm cả batch không được ghi một phần.
+- Dùng lịch chương trình đã đặt, không tự cắt khoảng tại ngày HR bấm hoàn thành sớm. Có thể xếp trước chương trình tương lai nếu lịch không trùng.
+- Chưa có đủ ngày ở chương trình mới hoặc lịch chương trình khác chưa rõ thì chặn xếp mới. Dữ liệu cũ trùng/chưa rõ lịch được giữ nguyên, script migration in số lượt cần rà soát, không tự xóa hoặc sửa. Chặn chốt kết quả cho lượt còn lịch trùng/chưa rõ để HR xử lý trước khi khóa lịch sử. Cho phép sửa lịch còn thiếu từng chương trình một, vẫn kiểm tra các khoảng đã xác định.
+- Ghi thành viên/kết quả/ngày/xóa được tuần tự bằng MySQL GET_LOCK theo database trước khi mở transaction; khóa tồn tại qua nhiều tiến trình backend. Direct SQL/import hoặc phiên bản backend cũ có thể bỏ qua quy tắc này; khi triển khai cần dừng phiên bản cũ.
 
-Browser là tùy chọn, không tự chạy trong suite mặc định, không thêm Playwright vào package.json. Nếu môi trường đã có Playwright và Chromium:
-```sh
-npm run test:completion-rate-browser
-node tests/run_all.js --only completion-rate --browser
-```
-Đặt CHROMIUM_PATH nếu Chromium không ở /usr/bin/chromium. Test browser tải toàn bộ index.html thật với API mock; không thay hàm render/mở modal bằng spy.
+## Báo cáo
+- Tổng, hoàn thành, đang thực tập, tạm dừng/không hoàn thành và tỷ lệ đều đếm LƯỢT THAM GIA (ID program_interns), chỉ gồm người đã xếp chương trình.
+- Số người duy nhất được hiển thị riêng. A hoàn thành + B đang học của cùng một người = 2 lượt, 1 hoàn thành, 1 người duy nhất, tỷ lệ 50%; nhóm A 100%, B 0%.
+- Tỷ lệ = completed / total * 100, làm tròn 1 chữ số; total=0 trả 0. Sắp xếp giảm theo tỷ lệ rồi tên.
+- Phân tích chương trình và mentor. Mentor của kết quả đã chốt dùng snapshot; lượt chưa chốt dùng mentor hiện tại. Nhãn thiếu được gom Chưa cập nhật; khóa Map an toàn với __proto__/constructor. Không có nhóm Khác.
+- from/to lọc chương trình có khoảng ngày giao với khoảng chọn, không còn lọc created_at hồ sơ. Nếu lọc một đầu, đầu còn lại không giới hạn; ngày thiếu không thể xác định giao theo đầu được lọc. Ngày hoàn thành được hiển thị riêng trong chi tiết.
+- Có programStatus DRAFT/OPEN/ONGOING/CLOSED; mặc định tất cả, mỗi nhóm hiện trạng thái chương trình. HR chọn CLOSED để xem khóa đã đóng, tránh lẫn khóa đang chạy.
+- Drill-down dùng cùng tập dữ liệu/bộ lọc/khóa nhóm với biểu đồ, phân trang theo lượt; hiển thị chương trình, lịch, kết quả, ngày hoàn thành, ID HR chốt và ghi chú.
+- CSV có đúng một BOM, dùng csvCell chống công thức/nháy kép. q escape %, _ và backslash, tất cả giá trị lọc tham số hóa. SQL không phụ thuộc việc tắt ONLY_FULL_GROUP_BY.
+- UI dùng DOM/textContent và escapeHtml, không ghép dữ liệu người dùng vào onclick. Phễu US5 có ghi chú trạng thái thực tập sinh không áp dụng cho ứng viên.
 
-Fixture bổ sung backend/tests/fixtures/completion_rate_seed.sql chỉ được import thủ công vào DB kiểm thử mới, tuyệt đối không nạp vào DB của người dùng. Sau runtime seed mặc định (1 intern), fixture thêm 7 hồ sơ/3 chương trình/2 mentor. Dùng US6_EXPECT_FIXTURE=1 khi chạy test API để kiểm tra chính xác tổng 8, hoàn thành 3, đang thực tập 3, chưa hoàn thành 2, thiếu trạng thái 1, tỷ lệ 37.5% và các nhóm 1/3, 2/3, 1/1. Không bật biến này trên dữ liệu khác.
+## API và cấu trúc
+- PUT /api/programs/:id/interns/:internId/completion — body {"completion_status":"COMPLETED","note":"HR xác nhận"}; 400 khi sai trường/trạng thái/ghi chú, 404 nếu không phải thành viên, 409 khi kết quả đã chốt hoặc chưa đủ điều kiện.
+- GET /api/reports/completion-rate — programId, programStatus, status (nhãn tiếng Việt của kết quả), from, to, q.
+- GET /api/reports/completion-rate/interns — cùng bộ lọc + groupBy=program|mentor, groupKey, page, pageSize (1–100).
+- GET /api/reports/completion-rate/export.csv — cùng bộ lọc.
+- Routes → controllers → services → db.js. Báo cáo và ghi kết quả chỉ HR có VIEW_REPORTS; 401/403/400 được phân biệt, Cache-Control private, no-store.
 
-## Kết quả thực tế
-- MySQL 8.0.46 trong container kiểm thử riêng, bật ONLY_FULL_GROUP_BY, STRICT_TRANS_TABLES, NO_ZERO_IN_DATE, NO_ZERO_DATE, ERROR_FOR_DIVISION_BY_ZERO, NO_ENGINE_SUBSTITUTION.
-- Khởi tạo DB mới từ schema.sql + seed_data.sql với client utf8mb4: đạt sau sửa phép so sánh collation nêu trên. SQL seed không có intern; initDatabase sẵn có tự tạo hồ sơ cho tài khoản Intern mẫu, nên baseline runtime có 1 đang thực tập, tỷ lệ 0. API baseline: 51 kiểm tra đạt.
-- test_completion_rate_unit.js: 17 test đạt, 0 lỗi/skip. Công thức, làm tròn, trạng thái thiếu, sắp xếp, khóa prototype, validation, CSV injection, phân trang và phân quyền HR thiếu VIEW_REPORTS.
-- test_completion_rate_api.js trên DB mới + fixture: 64 kiểm tra đạt, 0 lỗi. Có 200/401/403/400, dữ liệu chuẩn xác, lọc ngày inclusive, ký tự LIKE literal, chart/detail và phân trang, CSV BOM và chống công thức, header cache. Test xác nhận danh sách id/status trong DB không bị thay đổi bởi suite.
-- test_completion_rate_browser.js: 4 nhóm kiểm tra đạt, 0 lỗi JavaScript. Report Hub/render, nhãn dấu nháy và <>&, bấm nhóm, phân trang, giữ bộ lọc đã áp dụng, Esc, CSV download/BOM, rỗng/lỗi, phản hồi cũ, HR mất quyền.
-- Chạy cả ba suite qua run_all.js --only completion-rate --browser: 3 PASS / 0 FAIL / 0 SKIP.
-- Chromium nối backend/DB thật: kiểm tra tỷ lệ 37.5%, bấm nhóm và tổng danh sách, đóng Esc: đạt. Backend kiểm thử dùng initDatabase + app Express thật, không bật tác vụ email/reminder hoặc tự nạp demo.
-- 8 suite hồi quy đạt: intern-filter-unit, weekly-reports-unit, evaluations-unit, attendance-unit, final-reports-unit, programs-unit, mentor-assignment-unit, intern-origin-unit.
-- ESLint no-unused-vars/no-undef cho 6 tệp JS US6 mới: 0 lỗi. JavaScript inline toàn bộ index.html parse thành công.
+## Nâng cấp bản đang dùng
+Không import lại schema.sql/seed_data.sql vào DB người dùng. schema.sql mới chỉ để dựng DB mới.
+1. Giữ bản sao DB và các cấu hình db_config.json/mail_config.json riêng; dừng backend cũ.
+2. Thay mã bằng ZIP mới, giữ cấu hình riêng của máy.
+3. Trong backend chạy npm ci, rồi npm run migrate:program-completion với cấu hình DB đang dùng (cần quyền ALTER). Script chỉ thêm cột còn thiếu và đọc cảnh báo, không seed tài khoản, không UPDATE/DELETE hồ sơ/thành viên/kết quả cũ. Khi chạy lại không thêm trùng cột.
+4. npm start. initDatabase hiện có cũng gọi migration lặp an toàn sau khi tạo bảng program_interns. Các bước seed/sync tài khoản vốn có của ứng dụng không thuộc script migration độc lập.
+5. HR rà soát các lượt cũ, lịch trùng/thiếu và xác nhận kết quả từng khóa.
 
-## Giới hạn và phạm vi chưa chạy
-- Chưa chạy toàn bộ npm test, các API nghiệp vụ khác hoặc tác vụ nền email/reminder. Không kiểm thử trên MySQL/DB cục bộ của người dùng và không sửa/xóa dữ liệu ở đó.
-- Không có dữ liệu hoàn thành theo từng cặp chương trình/người và không có ngày hoàn thành. Báo cáo dùng trạng thái hồ sơ hiện tại; một người Hoàn thành thuộc nhiều chương trình sẽ được ghi nhận Hoàn thành trong từng nhóm. Đây là giới hạn mô hình dữ liệu, không tự suy ra ngưỡng điểm/điểm danh.
-- Các trạng thái cũ/thiếu không được tự chuyển đổi; vẫn hiện trong nhóm chưa hoàn thành và được đếm cảnh báo riêng.
-- Tổng hợp/chi tiết xử lý tập quan hệ thành viên đã lọc trong bộ nhớ để đảm bảo cùng cách đếm. Chưa benchmark tập dữ liệu lớn; không cắt top-N hoặc tạo nhóm Khác.
-- Số liệu giữa hai lần truy vấn có thể đổi nếu dữ liệu nghiệp vụ được cập nhật đồng thời.
+Không thêm dependency; package-lock.json và seed_data.sql giữ nguyên. Playwright chỉ dùng nếu môi trường kiểm thử đã có, không khai báo thêm vào ứng dụng.
+
+## Test tự động và kết quả thực tế
+Môi trường kiểm thử riêng MySQL 8.0.46 bật ONLY_FULL_GROUP_BY và STRICT_TRANS_TABLES; không dùng DB cục bộ của người dùng.
+- Migration từ schema cũ: chạy lặp, giữ nguyên các trường/bản ghi cũ; hồ sơ cũ Hoàn thành vẫn có kết quả khóa IN_PROGRESS/NULL, không bị suy diễn. Đạt.
+- Dựng schema.sql mới + seed_data.sql rồi initDatabase: đạt; kiểm tra 401 và no-store cho endpoint ghi kết quả: đạt.
+- test_completion_rate_unit.js: 20 test đạt (công thức, 0, làm tròn, sắp xếp, validation, CSV, ID/khóa nhóm, phạm vi thành viên, kết quả A/B độc lập, body HR).
+- test_program_completion_api.js: 26 nhóm kiểm tra đạt. Bao gồm A → B, actor/time/mentor snapshot, idempotent, khóa lịch sử, gỡ/xóa/đổi lịch/xóa hồ sơ và tài khoản bị chặn, PAUSED/resume, NOT_COMPLETED cần lý do, lịch tương lai/thiếu ngày, ngày giao nhau, batch atomic và 2 yêu cầu xếp trùng đồng thời qua 2 tiến trình backend (201 và 409).
+- test_completion_rate_api.js: 68 kiểm tra đạt khi có fixture vòng đời; 53 kiểm tra đạt sau dọn fixture. Số kiểm tra phụ thuộc số nhóm/chương trình thực tế. Suite này chỉ đọc, đối chiếu kết quả DB, phân quyền, bộ lọc, ngày chương trình, phân trang, rỗng và CSV.
+- test_completion_rate_browser.js: 5 nhóm kiểm tra đạt, toàn bộ index.html với API mock: render, nhãn nháy/<>&, drill-down/phân trang/Esc, CSV, rỗng/lỗi, khóa HR thiếu quyền và xác nhận kết quả.
+- test_program_completion_browser.js: đạt với Chromium + API + MySQL thật: HR bấm xác nhận A, A khóa, xếp B, tổng 2 lượt/1 người/50%, A 100% và B 0%, drill-down/nhãn an toàn. Có tệp test để chạy lại, không chỉ kiểm tra thủ công.
+- Chạy cả 5 suite qua runner: 5 PASS / 0 FAIL / 0 SKIP.
+- Hồi quy programs-unit, program-dates-unit, mentor-assignment-unit, program-mentor-unit, intern-origin-unit: 5 suite đạt. US5 API: 33 PASS / 0 FAIL trên MySQL 8; test browser US5 và DB-query mock đã đạt trong lần rà soát, đã sửa thứ tự dựng dữ liệu đo cuộn ngang.
+- ESLint no-unused-vars/no-undef trên 13 tệp liên quan mới/cập nhật: 0 lỗi. Script inline index.html parse được.
+
+Chạy thông thường trong backend:
+  npm run test:completion-rate-unit
+  npm run test:completion-rate-api
+  node tests/run_all.js --only completion-rate
+
+Các test ghi fixture KHÔNG chạy mặc định; chỉ chạy trên DB kiểm thử tên us6_test_* và đặt US6_TEST_DB_ALLOW_WRITES=1:
+  npm run test:program-completion-api
+  npm run test:program-completion-browser
+  node tests/run_all.js --only completion-rate --only program-completion --browser --program-results-write-tests
+Đặt TEST_PORT/TEST_BASE_URL và DB_* cho DB/backend kiểm thử; US6_SECOND_BASE_URL cho backend thứ hai nếu kiểm tra qua hai tiến trình. Browser cần Playwright có sẵn và Chromium (/usr/bin/chromium hoặc CHROMIUM_PATH). Test ghi từ chối chạy nếu không có cả cờ cho phép và tên DB thử; chỉ dọn ID do chính test tạo. Runner không gọi global cleanup cho các suite US6 này. Không sửa permissions.json.
+
+## Giới hạn còn lại
+Chưa chạy toàn bộ npm test, email/reminder hoặc hệ thống DB của người dùng. Chưa benchmark dữ liệu lớn; tổng hợp/chi tiết dùng tập thành viên đã lọc trong bộ nhớ. Chưa có đánh giá hoàn thành tự động theo điểm/chuyên cần; HR chịu trách nhiệm xác nhận. Báo cáo phản ánh kết quả khóa, không tự khẳng định chất lượng đào tạo chỉ bằng một tỷ lệ. Thống kê giữa hai request có thể đổi nếu dữ liệu nghiệp vụ đang được cập nhật.

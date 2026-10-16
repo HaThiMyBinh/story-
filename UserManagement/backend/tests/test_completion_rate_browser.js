@@ -1,4 +1,4 @@
-/* global document, window, permissionsMap, switchTab */
+/* global document, window, permissionsMap, switchTab, programItems, programMentorOpen */
 // Optional full production page test with mocked HTTP APIs; no MySQL needed.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -11,7 +11,7 @@ async function main() {
  const browser = await chromium.launch({executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  try {
   const page = await browser.newPage({viewport:{width:1440,height:1000},acceptDownloads:true});
-  const errors=[],queries=[]; let empty=false,fail=false,delayed=false;
+  const errors=[],queries=[]; let empty=false,fail=false,delayed=false,confirmed=false;
   page.on('pageerror',err=>errors.push(err.message));
   await page.addInitScript(()=>{
    sessionStorage.setItem('authToken','browser-test-token');
@@ -34,6 +34,13 @@ async function main() {
     return json({success:true,data:{summary,items:[{id:second?16:1,fullName:name,studentCode:'US6',university:name,mentorName:name,status:'Hoàn thành'}],pagination:{page:second?2:1,pageSize:15,total:16,totalPages:2}}});
    }
    if(url.pathname==='/api/reports/completion-rate/export.csv') return route.fulfill({contentType:'text/csv; charset=utf-8',headers:{'content-disposition':'attachment; filename=ty-le-hoan-thanh-chuong-trinh.csv'},body:Buffer.from('\uFEFF"CSV"\r\n')});
+   if(url.pathname==='/api/mentors') return json([]);
+   if(url.pathname==='/api/programs/1/interns/9/completion') {
+    const body=route.request().postDataJSON(); assert.equal(body.completion_status,'COMPLETED'); assert.equal(body.note,'Đã hoàn thành khóa A'); confirmed=true;
+    return json({success:true,data:{already:false}});
+   }
+   if(url.pathname==='/api/programs/1/interns') return json({success:true,data:[{id:9,fullName:name,completionStatus:confirmed?'COMPLETED':'IN_PROGRESS',completionNote:confirmed?'Đã hoàn thành khóa A':'',completedBy:confirmed?1:null}]});
+   if(url.pathname==='/api/programs/1/available-interns') return json({success:true,data:[]});
    if(url.pathname==='/api/notifications') return json({data:{unread:0,items:[]}});
    if(url.pathname.startsWith('/api/')) return json({success:true,data:{},applications:{total:0,pending:0,approved:0,rejected:0},interns:{total:0,assigned:0},contracts:{total:0,confirmed:0}});
    return route.fulfill({status:204,body:''});
@@ -72,6 +79,17 @@ async function main() {
   await page.waitForFunction(()=>document.getElementById('crError').textContent.includes('Bộ lọc không hợp lệ'));
   assert.ok(await page.locator('#crExport').isDisabled());
   console.log('[PASS] Empty/error states and stale modal response');
+  await page.evaluate(()=>{programItems=[{id:1,name:"O'Brien <>&"}];return programMentorOpen(programItems[0].id);});
+  await page.locator('.pm-save-result').waitFor();
+  await page.locator('.pm-result select').selectOption('COMPLETED');
+  await page.locator('.pm-result input').fill('Đã hoàn thành khóa A');
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('.pm-save-result').click();
+  await page.waitForFunction(()=>document.querySelector('.pm-result')?.textContent.includes('Đã hoàn thành khóa A'));
+  assert.equal(confirmed,true);assert.equal(await page.locator('.pm-save-result').count(),0);
+  assert.equal(await page.locator('#pmRows img').count(),0);
+  assert.ok(await page.locator('#pmRows button.btn-danger').isDisabled());
+  console.log('[PASS] HR confirms per-program result; finalized row is locked and labels are escaped');
   await page.evaluate(()=>{permissionsMap.HR=[];switchTab('tab-completion-rate');});
   assert.equal(await page.locator('#tab-completion-rate').evaluate(el=>el.style.display),'none');
   console.log('[PASS] Frontend blocks HR without VIEW_REPORTS');

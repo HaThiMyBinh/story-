@@ -3265,13 +3265,14 @@
           <div class="card">
             <div class="card-header"><h3>Tỷ lệ hoàn thành chương trình</h3></div>
             <div class="card-body">
-              <p style="margin-bottom:12px">Hoàn thành = trạng thái hồ sơ hiện tại “Hoàn thành”. Thành viên theo phân công chương trình của HR; không phải kết quả lịch sử từng khóa.</p>
-              <p class="text-muted" style="margin-bottom:16px">Khoảng ngày lọc theo ngày tạo hồ sơ. Người thuộc nhiều chương trình xuất hiện ở nhiều nhóm; tổng chung chỉ đếm mỗi người một lần.</p>
+              <p style="margin-bottom:12px">Kết quả được HR xác nhận riêng cho từng lượt tham gia chương trình. Hoàn thành A không tự làm hoàn thành B; trạng thái hồ sơ không quyết định kết quả này.</p>
+              <p class="text-muted" style="margin-bottom:16px">Khoảng ngày lọc theo thời gian chương trình có giao với khoảng chọn. Tổng chung đếm lượt tham gia, không phải số người duy nhất; có thể chọn chương trình CLOSED để đánh giá khóa đã kết thúc.</p>
               <form id="crFilters" style="display:flex;flex-wrap:wrap;gap:12px;align-items:end">
                 <label>Chương trình<select id="crProgram" class="form-control"><option value="">Tất cả chương trình</option></select></label>
-                <label>Trạng thái<select id="crStatus" class="form-control"><option value="">Tất cả trạng thái</option><option>Đang thực tập</option><option>Hoàn thành</option><option>Tạm dừng</option></select></label>
-                <label>Từ ngày<input id="crFrom" type="date" class="form-control"></label>
-                <label>Đến ngày<input id="crTo" type="date" class="form-control"></label>
+                <label>Trạng thái<select id="crStatus" class="form-control"><option value="">Tất cả trạng thái</option><option>Đang thực tập</option><option>Hoàn thành</option><option>Tạm dừng</option><option>Không hoàn thành</option></select></label>
+                <label>Trạng thái chương trình<select id="crProgramStatus" class="form-control"><option value="">Tất cả</option><option>DRAFT</option><option>OPEN</option><option>ONGOING</option><option>CLOSED</option></select></label>
+                <label>Khoảng chương trình từ<input id="crFrom" type="date" class="form-control"></label>
+                <label>Khoảng chương trình đến<input id="crTo" type="date" class="form-control"></label>
                 <label>Từ khóa<input id="crQ" type="search" maxlength="100" class="form-control" placeholder="Tên, MSSV, trường, mentor, chương trình"></label>
                 <button class="btn btn-primary" type="submit">Xem báo cáo</button>
                 <button class="btn btn-secondary" type="button" id="crExport" disabled>Xuất CSV</button>
@@ -3363,6 +3364,7 @@
             <div class="card-header">
               <h3><i class="fa-solid fa-filter text-primary"></i> Phễu tuyển dụng theo trường (Hồ sơ ứng viên)</h3>
             </div>
+            <p class="text-muted" style="padding:0 20px">Bộ lọc trạng thái thực tập sinh không áp dụng cho phễu ứng viên. Phễu chỉ áp dụng khoảng ngày nộp hồ sơ và từ khóa tên trường.</p>
             <div class="card-body" id="iorFunnelBody"></div>
           </div>
 
@@ -5603,10 +5605,10 @@
                   <th>Thực tập sinh</th>
                   <th>Trường</th>
                   <th>Mentor hiện tại</th>
-                  <th></th>
+                  <th>Kết quả chương trình</th><th></th>
                 </tr>
               </thead>
-              <tbody id="pmRows"><tr><td colspan="5">Đang tải...</td></tr></tbody>
+              <tbody id="pmRows"><tr><td colspan="6">Đang tải...</td></tr></tbody>
             </table>
           </div>
           <p id="pmError" class="text-danger" role="alert" style="margin: 10px 0 0"></p>
@@ -11623,8 +11625,9 @@
           ]);
         } catch (err) { pmInterns = []; pmAvailable = []; setText("pmError", err.message); }
         document.getElementById("pmRows").innerHTML = pmInterns.length
-          ? pmInterns.map((i) => `<tr><td><input type="checkbox" class="pm-check" value="${Number(i.id)}" onchange="programMentorUpdateButton()" aria-label="Chọn ${escapeHtml(i.fullName)}" /></td><td>${escapeHtml(i.fullName)}<span class="fr-sub">${escapeHtml(i.studentCode || "")}</span></td><td>${escapeHtml(i.university || "")}</td><td>${i.mentorName ? escapeHtml(i.mentorName) : "<em>Chưa phân công</em>"}</td><td><button class="btn btn-sm btn-danger" onclick="programMentorRemove(${Number(i.id)})">Gỡ khỏi CT</button></td></tr>`).join("")
-          : '<tr><td colspan="5">Chương trình chưa có thực tập sinh. Mở mục "Thêm thực tập sinh vào chương trình" ở trên để thêm.</td></tr>';
+          ? pmInterns.map((i) => `<tr><td><input type="checkbox" class="pm-check" value="${Number(i.id)}" onchange="programMentorUpdateButton()" aria-label="Chọn ${escapeHtml(i.fullName)}" /></td><td>${escapeHtml(i.fullName)}<span class="fr-sub">${escapeHtml(i.studentCode || "")}</span></td><td>${escapeHtml(i.university || "")}</td><td>${i.mentorName ? escapeHtml(i.mentorName) : "<em>Chưa phân công</em>"}</td><td class="pm-result"></td><td><button ${["COMPLETED","NOT_COMPLETED"].includes(i.completionStatus) ? "disabled" : ""} class="btn btn-sm btn-danger" onclick="programMentorRemove(${Number(i.id)})">Gỡ khỏi CT</button></td></tr>`).join("")
+          : '<tr><td colspan="6">Chương trình chưa có thực tập sinh. Mở mục "Thêm thực tập sinh vào chương trình" ở trên để thêm.</td></tr>';
+        programMentorRenderResults();
         programMentorRenderAvailable();
         programMentorUpdateButton();
       }
@@ -11645,6 +11648,42 @@
           await programMentorReload();
         } catch (err) { setText("pmError", err.message); }
       }
+      const programResultLabels = { IN_PROGRESS: "Đang thực tập", COMPLETED: "Hoàn thành", PAUSED: "Tạm dừng", NOT_COMPLETED: "Không hoàn thành" };
+      function programMentorRenderResults() {
+        const rows = document.querySelectorAll("#pmRows tr");
+        pmInterns.forEach((intern,index) => {
+          const cell = rows[index]?.querySelector(".pm-result"); if (!cell) return;
+          const finalized = ["COMPLETED","NOT_COMPLETED"].includes(intern.completionStatus);
+          const status = intern.completionStatus || "IN_PROGRESS";
+          cell.append(crElement("strong", programResultLabels[status] || status));
+          if (intern.completedAt) cell.append(crElement("p", `Xác nhận: ${String(intern.completedAt).replace("T"," ")}`));
+          if (intern.completedBy) cell.append(crElement("p", `HR xác nhận (mã): ${intern.completedBy}`));
+          if (finalized || !getRolePermissions(currentRole).includes("VIEW_REPORTS")) {
+            if (intern.completionNote) cell.append(crElement("p", intern.completionNote));
+            return;
+          }
+          const select = document.createElement("select"); select.className = "form-control";
+          select.setAttribute("aria-label", `Kết quả của ${intern.fullName}`);
+          for (const [value,label] of Object.entries(programResultLabels)) select.add(new Option(label,value));
+          select.value = status;
+          const note = document.createElement("input"); note.className = "form-control"; note.maxLength = 500;
+          note.value = intern.completionNote || ""; note.placeholder = "Ghi chú (bắt buộc nếu không hoàn thành)";
+          note.setAttribute("aria-label", `Ghi chú kết quả của ${intern.fullName}`);
+          const save = crElement("button","Lưu kết quả","btn btn-sm btn-primary pm-save-result"); save.type = "button";
+          const currentProgram = pmProgramId;
+          save.addEventListener("click", async () => {
+            if (["COMPLETED","NOT_COMPLETED"].includes(select.value) && !confirm(`Chốt kết quả “${programResultLabels[select.value]}” cho ${intern.fullName}? Kết quả sẽ được giữ và không thể ghi đè.`)) return;
+            save.disabled = true; setText("pmError", "");
+            try {
+              await programRequest(`/programs/${currentProgram}/interns/${intern.id}/completion`, {method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({completion_status:select.value,note:note.value})});
+              if (pmProgramId === currentProgram) await programMentorReload();
+              showToast("Đã lưu kết quả riêng của chương trình.","success");
+            } catch (err) { setText("pmError",err.message); save.disabled = false; }
+          });
+          cell.append(select,note,save);
+        });
+      }
+
       async function programMentorRemove(internId) {
         if (!confirm("Gỡ thực tập sinh này khỏi chương trình? (mentor của họ không bị thay đổi)")) return;
         setText("pmError", "");
@@ -12451,7 +12490,7 @@
       }
       function crReadFilters() {
         const params = new URLSearchParams();
-        for (const [key, id] of [["programId", "crProgram"], ["status", "crStatus"], ["from", "crFrom"], ["to", "crTo"], ["q", "crQ"]]) {
+        for (const [key, id] of [["programId", "crProgram"], ["programStatus", "crProgramStatus"], ["status", "crStatus"], ["from", "crFrom"], ["to", "crTo"], ["q", "crQ"]]) {
           const value = document.getElementById(id).value.trim();
           if (value) params.set(key, value);
         }
@@ -12482,19 +12521,21 @@
         const s = data.summary;
         const cards = crElement("div", null, "stats-grid");
         cards.style.marginTop = "20px";
-        for (const [label, value] of [["Tổng", s.total], ["Đã hoàn thành", s.completed], ["Đang thực tập", s.active], ["Tạm dừng / không hoàn thành", s.notCompleted], ["Tỷ lệ chung", `${Number(s.rate).toFixed(1)}%`]]) {
+        for (const [label, value] of [["Tổng lượt tham gia", s.total], ["Đã hoàn thành", s.completed], ["Đang thực tập", s.active], ["Tạm dừng / không hoàn thành", s.notCompleted], ["Tỷ lệ chung", `${Number(s.rate).toFixed(1)}%`]]) {
           const card = crElement("div", null, "stat-card");
           const info = crElement("div", null, "info");
           info.append(crElement("p", label), crElement("h3", value)); card.append(info); cards.append(card);
         }
         summary.append(cards);
+        summary.append(crElement("p", `Số thực tập sinh duy nhất: ${s.uniqueInterns ?? s.total}. Tỷ lệ tính theo lượt tham gia.`));
+        if (s.pendingReview) summary.append(crElement("p", `${s.pendingReview} lượt chưa có lần cập nhật kết quả. HR mở Chương trình thực tập → Thực tập sinh & mentor để rà soát/xác nhận.`, "text-muted"));
         if (s.unknownStatus) summary.append(crElement("p", `${s.unknownStatus} hồ sơ có trạng thái thiếu hoặc ngoài danh mục, đang được tính vào nhóm chưa hoàn thành.`, "text-muted"));
         if (!s.total) summary.append(crElement("p", "Không có thực tập sinh trong phạm vi lọc.", "text-muted"));
         for (const [dimension, id, groups] of [["program", "crPrograms", data.byProgram], ["mentor", "crMentors", data.byMentor]]) {
           const host = document.getElementById(id); host.replaceChildren();
           if (!groups.length) { host.append(crElement("p", "Không có dữ liệu phù hợp.", "text-muted")); continue; }
           const rows = groups.map(group => {
-            const button = crElement("button", `${group.name} — ${Number(group.rate).toFixed(1)}%`, "btn btn-light cr-group");
+            const button = crElement("button", `${group.name} — ${Number(group.rate).toFixed(1)}%${group.programStatus ? ` (${group.programStatus})` : ""}`, "btn btn-light cr-group");
             button.type = "button";
             button.dataset.dimension = dimension; button.dataset.key = group.key;
             button.dataset.name = group.name;
@@ -12562,9 +12603,9 @@
           if (!result.res.ok) throw new Error(wrApiError(result, "Không thể tải danh sách."));
           const { items, pagination, summary } = result.body.data;
           details.replaceChildren();
-          details.append(crElement("p", `Tổng ${pagination.total} hồ sơ; đã hoàn thành ${summary.completed}; tỷ lệ ${Number(summary.rate).toFixed(1)}%.`));
+          details.append(crElement("p", `Tổng ${pagination.total} lượt tham gia; đã hoàn thành ${summary.completed}; tỷ lệ ${Number(summary.rate).toFixed(1)}%.`));
           if (!items.length) details.append(crElement("p", "Không có hồ sơ trong nhóm/trang này.", "text-muted"));
-          else details.append(crTable(["Họ tên", "MSSV", "Trường", "Mentor", "Trạng thái"], items.map(item => [item.fullName, item.studentCode, item.university, item.mentorName, item.status])));
+          else details.append(crTable(["Họ tên", "MSSV", "Chương trình", "Thời gian chương trình", "Trường", "Mentor", "Kết quả", "Ngày hoàn thành", "HR xác nhận (mã)", "Ghi chú"], items.map(item => [item.fullName, item.studentCode, item.programName, `${item.programStart || "?"} – ${item.programEnd || "?"}`, item.university, item.mentorName, item.status, item.completedAt, item.completedBy, item.completionNote])));
           const previous = crElement("button", "Trước", "btn btn-secondary"); previous.type = "button"; previous.disabled = pagination.page <= 1;
           const next = crElement("button", "Sau", "btn btn-secondary"); next.type = "button"; next.disabled = pagination.page >= pagination.totalPages;
           previous.addEventListener("click", () => openCompletionRateGroup(dimension, key, name, pagination.page - 1));

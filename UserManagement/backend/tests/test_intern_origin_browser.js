@@ -18,11 +18,6 @@ async function main() {
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('#iorDetailModal').evaluate(el => el.style.display), 'none');
     console.log('[PASS] Apostrophe/quotes/HTML names round-trip through click; Escape closes modal');
-    await page.evaluate(() => {
-      const majors = Array.from({length:30}, (_,i) => `Chuyên ngành ${i}`);
-      const data = Object.fromEntries(majors.map(m => [m, 1]));
-      renderInternOriginMatrix({matrix:{universities:['Đại học Y'],majors,data:{'Đại học Y':data},totals:{byUniversity:{'Đại học Y':30},byMajor:data,grandTotal:30}}});
-    });
     await page.evaluate(() => renderInternOriginCharts({byUniversity:[{name:'Khác',count:4,percent:40},{name:'Đại học A',count:6,percent:60}],byMajor:[{name:'Khác',count:4,percent:40}]}));
     assert.equal(await page.locator('#iorUniChartBody .ior-detail-trigger').count(), 1);
     assert.equal(await page.locator('#iorMajorChartBody .ior-detail-trigger').count(), 0);
@@ -30,6 +25,11 @@ async function main() {
     assert.equal(await page.locator('#iorMatrixBody .ior-detail-trigger').count(), 1);
     assert.match(await page.locator('#iorMatrixBody tbody tr').nth(1).innerText(), /3/);
     console.log('[PASS] Nhóm "Khác" không bấm được ở biểu đồ và ma trận, ô ma trận vẫn hiện số');
+    await page.evaluate(() => {
+      const majors = Array.from({length:30}, (_,i) => `Chuyên ngành ${i}`);
+      const data = Object.fromEntries(majors.map(m => [m, 1]));
+      renderInternOriginMatrix({matrix:{universities:['Đại học Y'],majors,data:{'Đại học Y':data},totals:{byUniversity:{'Đại học Y':30},byMajor:data,grandTotal:30}}});
+    });
     const sizes = await page.locator('#iorMatrixBody > div').evaluate(el => {el.scrollLeft=250; return {client:el.clientWidth, scroll:el.scrollWidth, left:el.scrollLeft, overflow:getComputedStyle(el).overflowX};});
     assert.equal(sizes.overflow, 'auto'); assert.ok(sizes.scroll > sizes.client); assert.ok(sizes.left > 0);
     await page.screenshot({path: process.env.US5_SCREENSHOT || '/tmp/us5-matrix.png'});

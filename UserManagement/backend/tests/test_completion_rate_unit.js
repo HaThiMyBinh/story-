@@ -6,8 +6,8 @@ const vm = require("node:vm");
 const service = require("../services/completionRate.service");
 const db = require("../db");
 const rows = [
-  { id: 1, fullName: "A", programId: 10, programName: "Alpha", mentorId: 2, mentorName: "Mentor A", status: "Hoàn thành" },
-  { id: 1, fullName: "A", programId: 11, programName: "Beta", mentorId: 2, mentorName: "Mentor A", status: "Hoàn thành" },
+  { id: 1, internId: 1, fullName: "A", programId: 10, programName: "Alpha", mentorId: 2, mentorName: "Mentor A", status: "Hoàn thành" },
+  { id: 4, internId: 1, fullName: "A", programId: 11, programName: "Beta", mentorId: 2, mentorName: "Mentor A", status: "Hoàn thành" },
   { id: 2, fullName: "B", programId: 10, programName: "Alpha", mentorId: 2, mentorName: "Mentor A", status: "Đang thực tập" },
   { id: 3, fullName: "C", programId: null, programName: null, mentorId: null, mentorName: null, status: "Tạm dừng" },
 ];
@@ -24,16 +24,16 @@ test("rate: zero denominator, 1/3, 2/3 and all completed", () => {
   assert.equal(service.rate(3, 3), 100);
   assert.ok(Number.isFinite(service.buildReport([]).summary.rate));
 });
-test("summary deduplicates multi-program members and partitions statuses", () => {
-  assert.deepEqual(service.summarize(rows), { total: 3, completed: 1, active: 1, notCompleted: 1, unknownStatus: 0, rate: 33.3 });
+test("summary counts membership IDs, with unique people shown separately", () => {
+  assert.deepEqual(service.summarize(rows), { total: 4, completed: 2, active: 1, notCompleted: 1, unknownStatus: 0, uniqueInterns: 3, pendingReview: 4, rate: 50 });
 });
 test("unknown, empty and legacy statuses remain visible as not completed", () => {
   const data = [null, "", "Foo", "Đã kết thúc", " Hoàn thành "].map((status, id) => ({ id, status }));
-  assert.deepEqual(service.summarize(data), { total: 5, completed: 1, active: 0, notCompleted: 4, unknownStatus: 4, rate: 20 });
+  assert.deepEqual(service.summarize(data), { total: 5, completed: 1, active: 0, notCompleted: 4, unknownStatus: 4, uniqueInterns: 5, pendingReview: 5, rate: 20 });
 });
 test("groups sort by descending rate, then Vietnamese name", () => {
   const report = service.buildReport(rows);
-  assert.deepEqual(report.byProgram.map(g => [g.name, g.rate]), [["Beta", 100], ["Alpha", 50], ["Chưa cập nhật", 0]]);
+  assert.deepEqual(report.byProgram.map(g => [g.name, g.rate]), [["Beta", 100], ["Alpha", 50]]);
   const ties = service.groupRows([{ id: 1, programId: 2, programName: "B", status: "Hoàn thành" }, { id: 2, programId: 1, programName: "A", status: "Hoàn thành" }], "program");
   assert.deepEqual(ties.map(g => g.name), ["A", "B"]);
 });
@@ -130,7 +130,7 @@ test("DB SQL is parameterized, escapes LIKE wildcards and supports all filters",
   assert.equal(captured.params.length, 9);
   assert.equal(captured.params[4], "%50\\%\\_\\\\' OR 1=1%");
   assert.match(captured.sql, /pi\.program_id = \?/);
-  assert.match(captured.sql, /DATE\(i\.created_at\) >= \?/);
+  assert.match(captured.sql, /p\.end_date >= \?/);
 });
 test("HR without VIEW_REPORTS is denied by the existing permission middleware", () => {
   const source = fs.readFileSync(path.join(__dirname, "../middleware/permissions.js"), "utf8");
@@ -143,4 +143,32 @@ test("HR without VIEW_REPORTS is denied by the existing permission middleware", 
   const res = { status(code) { status = code; return this; }, json() {} };
   module.exports.checkPermission("VIEW_REPORTS")({ user: { role: "HR" } }, res, () => assert.fail("must not authorize"));
   assert.equal(status, 403);
+});
+
+test("report and detail exclude profiles without program membership", async () => {
+  const data = [...rows, { id: 99, programId: null, status: "Hoàn thành" }];
+  const result = service.buildReport(data);
+  assert.deepEqual(result.summary, { total: 3, completed: 2, active: 1, notCompleted: 0, unknownStatus: 0, uniqueInterns: 2, pendingReview: 3, rate: 66.7 });
+  assert.ok(result.byProgram.every(group => group.key !== "unassigned"));
+  await withRows(data, async () => {
+    const detail = await service.interns({ groupBy: "program", groupKey: "unassigned" });
+    assert.equal(detail.pagination.total, 0);
+  });
+  assert.equal(service.buildReport([{ id: 1, programId: null, status: "Hoàn thành" }]).summary.rate, 0);
+});
+
+test("A completed and B active remain independent for the same intern", () => {
+  const report = service.buildReport([
+    {id:101,internId:1,programId:10,programName:"A",status:"Hoàn thành",profileStatus:"Tạm dừng",resultUpdatedAt:"2020-01-31"},
+    {id:102,internId:1,programId:11,programName:"B",status:"Đang thực tập",profileStatus:"Tạm dừng"},
+  ]);
+  assert.equal(report.summary.total,2); assert.equal(report.summary.completed,1);
+  assert.equal(report.summary.uniqueInterns,1); assert.equal(report.summary.rate,50);
+  assert.equal(report.byProgram.find(g=>g.key==="10").rate,100);
+  assert.equal(report.byProgram.find(g=>g.key==="11").rate,0);
+});
+test("HR result validation rejects forged audit fields and requires failure reason", () => {
+  const results = require("../services/programCompletion.service");
+  for(const body of [{},{completion_status:"Foo"},{completion_status:"COMPLETED",completed_by:999},{completion_status:"NOT_COMPLETED"},{completion_status:"PAUSED",note:"x".repeat(501)}]) assert.throws(()=>results.validateResult(body),e=>e.status===400);
+  assert.equal(results.validateResult({completion_status:"COMPLETED",note:" HR xác nhận "}).note,"HR xác nhận");
 });

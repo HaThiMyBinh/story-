@@ -2,7 +2,10 @@ const express = require("express");
 const { requireRole } = require("../auth");
 const controller = require("../controllers/programs.controller");
 
+const { checkPermission } = require("../middleware/permissions");
+const completion = require("../controllers/programCompletion.controller");
 const router = express.Router();
+router.put("/programs/:id/interns/:internId/completion", (req,res,next) => { res.set("Cache-Control","private, no-store"); next(); }, requireRole("HR"), checkPermission("VIEW_REPORTS"), completion.save);
 
 router.get(
   "/departments",

@@ -1,7 +1,9 @@
-# story-
+# UserManagement
 
-## UserManagement US6
+[Tải ZIP mới nhất — US6 kết quả từng chương trình](UserManagement_US6_program_results.zip)
 
-[Tải ZIP US6](UserManagement_US6.zip) · [Mã nguồn](UserManagement/) · [Định nghĩa và kết quả kiểm thử](UserManagement/FIXES_US6.md)
+HR xác nhận kết quả riêng từng khóa; hoàn thành A không tự hoàn thành B. Chặn xếp trùng lịch và giữ kết quả đã chốt. Báo cáo có lọc, drill-down và CSV.
 
-Tỷ lệ hoàn thành chương trình cho HR: lọc, thống kê theo chương trình/mentor, danh sách chi tiết và CSV. Xem FIXES_US6.md để biết giới hạn của trạng thái hồ sơ hiện tại.
+**Nâng cấp bản cũ:** giữ cấu hình DB/email riêng, dừng backend cũ, chạy trong backend: `npm ci` → `npm run migrate:program-completion` → `npm start`. Không import lại schema/seed vào DB đang dùng. Lượt cũ cần HR rà soát, không tự suy ra từ trạng thái hồ sơ.
+
+[Mã nguồn](UserManagement/) · [Migration, định nghĩa, kết quả kiểm thử và giới hạn](UserManagement/FIXES_US6.md)

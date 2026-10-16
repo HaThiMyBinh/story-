@@ -1,7 +1,7 @@
 # Tải và chạy dự án
 
-Bản US6: tải UserManagement_US6.zip tại thư mục gốc kho GitHub.
+Tải UserManagement_US6_program_results.zip tại thư mục gốc GitHub (UserManagement_US6.zip cũng là bản mới nhất).
 
-Trước khi chạy, sao chép backend/db_config.example.json thành backend/db_config.json và nhập cấu hình MySQL riêng. Nếu cần email, dùng backend/mail_config.example.json để tạo backend/mail_config.json. Không đưa mật khẩu lên GitHub.
+Giữ cấu hình DB/email riêng; ZIP không chứa mật khẩu riêng. Nếu dựng máy mới, tạo db_config.json/mail_config.json từ tệp example.
 
-Xem FIXES_US6.md để biết định nghĩa hoàn thành, các kiểm tra đã chạy và giới hạn. Không import fixture kiểm thử vào DB người dùng.
+Nâng cấp DB cũ: không import schema.sql hoặc seed_data.sql. Trong backend chạy npm ci rồi npm run migrate:program-completion, sau đó npm start. Xem FIXES_US6.md trước khi nâng cấp và rà soát các lượt cũ.

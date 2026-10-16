@@ -441,6 +441,10 @@ Chưa có: email thông báo, SLA/hạn xử lý, mẫu giấy tờ tự sinh, g
 
 ## US6 — Tỷ lệ hoàn thành chương trình
 
-HR có VIEW_REPORTS mở Báo cáo & Thống kê → Tỷ lệ hoàn thành chương trình. Báo cáo dùng trạng thái hồ sơ Hoàn thành và thành viên program_interns, phân tích theo chương trình/mentor, có bộ lọc, danh sách phân trang và CSV.
+HR có VIEW_REPORTS xác nhận kết quả riêng từng chương trình tại **Chương trình thực tập → Thực tập sinh & mentor → Kết quả chương trình**. Kết quả A được giữ khi xếp tiếp chương trình B; ứng dụng chặn lịch trùng.
 
-Định nghĩa nghiệp vụ, API, cách chạy test, kết quả thực tế và giới hạn: xem [FIXES_US6.md](FIXES_US6.md).
+**Nâng cấp từ bản cũ:** giữ cấu hình riêng, dừng backend cũ, chạy `cd backend`, `npm ci`, `npm run migrate:program-completion`, rồi `npm start`. Không import lại schema/seed vào DB đang dùng. Lượt cũ không tự suy ra hoàn thành từ trạng thái hồ sơ; cần HR rà soát.
+
+Báo cáo trong Report Hub có bộ lọc thời gian chương trình/trạng thái chương trình, thống kê theo lượt tham gia và số người riêng, drill-down và CSV.
+
+Xem [FIXES_US6.md](FIXES_US6.md) để biết định nghĩa, migration, API, kiểm thử và giới hạn.

@@ -8,21 +8,20 @@
 - Nhãn phổ biến nhất được tính từ các nhóm SQL BINARY; khóa __proto__/constructor có test đơn vị.
 - Esc đóng modal; bảng 30 cột thực sự cuộn ngang trên Chromium (clientWidth=700, scrollWidth=4765, scrollLeft=250).
 
-## Kết quả đã chạy
-Trong backend sau npm ci:
-- node tests/test_intern_origin_report_unit.js: 24 PASS, 0 FAIL.
-- node tests/test_intern_origin_regressions.js: 3 kiểm tra đạt, chạy hàm DB thực với query giả lập; không phải tích hợp MySQL.
-- node tests/test_intern_origin_browser.js: kiểm tra renderer/listener thật trong DOM cô lập bằng Playwright + Chromium đạt. Hàm mở modal được thay bằng spy, nên test này không xác nhận request API hoặc toàn bộ luồng đăng nhập.
-- ESLint 9 no-unused-vars trên service và bốn tệp test US5 (unit/API/regressions/browser): 0 lỗi.
+## Kết quả đã chạy trong lần rà soát mới
+- test_intern_origin_report_unit.js: 24 PASS / 0 FAIL.
+- test_intern_origin_report_api.js: 33 PASS / 0 FAIL trên MySQL 8.0.46 bật ONLY_FULL_GROUP_BY, DB kiểm thử riêng; xác nhận ANY_VALUE + GROUP BY BINARY và truy vấn chi tiết chạy được.
+- test_intern_origin_regressions.js: đạt (DB query mock, không thay cho API tích hợp).
+- test_intern_origin_browser.js: đạt sau khi sửa thứ tự dựng dữ liệu trong test. Trước đó test dựng ma trận 30 cột rồi ghi đè bằng ma trận 2 cột trước khi đo cuộn; nay đo đúng ma trận 30 cột. Kiểm tra nhãn có dấu nháy/HTML, Esc, nhóm Khác không bấm được và cuộn ngang.
 
-Test browser cần gói playwright có thể require được và Chromium tại /usr/bin/chromium, hoặc đặt CHROMIUM_PATH. Không thêm phụ thuộc browser vào ứng dụng.
+Browser dùng Playwright/Chromium ngoài ứng dụng, không thêm dependency. Test này kiểm tra renderer/listener thật trong DOM cô lập, không phải toàn bộ luồng đăng nhập/API.
 
 ## Bổ sung vòng này
 - Đổi SELECT sang ANY_VALUE(...) với GROUP BY BINARY (getInternOriginCounts, getCandidateFunnelByUniversity, listInternsByOrigin) để tương thích ONLY_FULL_GROUP_BY của MySQL 8.
-- Frontend: thêm iorIsClickable/iorTriggerAttrs; test browser có thêm kiểm tra nhóm Khác (chưa chạy được ở đây vì thiếu Chromium).
+- Frontend: thêm iorIsClickable/iorTriggerAttrs; test browser có thêm kiểm tra nhóm Khác.
 
 ## Chưa xác nhận / giới hạn
-- Chưa chạy trên MySQL 8 thật: cần chạy server rồi node tests/test_intern_origin_report_api.js để xác nhận ANY_VALUE + GROUP BY BINARY không lỗi 1055.
-- Không có MySQL tại 127.0.0.1:3306 (ECONNREFUSED). Chưa chạy test API tích hợp. Đã thêm assertion status=Foo, groupBy=major và thiếu nhóm vào test API để chạy trên môi trường MySQL theo README.
 - Nhóm tổng hợp Khác không có ánh xạ thành viên: frontend không còn cho bấm (biểu đồ, bảng, ma trận); ô ma trận vẫn hiện số. Backend vẫn trả rỗng nếu gọi trực tiếp university/major=Khác.
 - Không truy cập hoặc sửa DB cục bộ của người dùng.
+
+Giao diện phễu đã ghi rõ trạng thái thực tập sinh không áp dụng cho ứng viên; chỉ lọc ngày nộp và từ khóa tên trường. normalizeKey gom khác dấu/hoa thường/khoảng trắng, không tự sửa các lỗi chính tả tùy ý.

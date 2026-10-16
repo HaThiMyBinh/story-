@@ -253,6 +253,13 @@ async function get(rawId) {
 }
 
 function throwSaveError(outcome) {
+  const errors = {
+    OVERLAP: "Khoảng ngày mới làm trùng lịch thực tập sinh với chương trình khác!",
+    DATES_REQUIRED: "Chương trình có thành viên phải có đủ ngày bắt đầu và kết thúc!",
+    RESULTS_FINALIZED: "Không thể đổi khoảng ngày chương trình đã có kết quả chốt!",
+    CAPACITY_BELOW_MEMBERS: "Sức chứa không được nhỏ hơn số thành viên đã xếp!",
+  };
+  if (errors[outcome]) throw new HttpError(409, errors[outcome]);
   if (outcome === "DUPLICATE") {
     throw new HttpError(
       409,
@@ -321,6 +328,7 @@ async function update(rawId, input) {
 
 async function remove(rawId) {
   const result = await db.deleteProgram(parseId(rawId));
+  if (result === "HAS_MEMBERS") throw new HttpError(409, "Không thể xóa chương trình có thành viên/lịch sử kết quả!");
   if (result === "NOT_FOUND") {
     throw new HttpError(404, "Không tìm thấy chương trình thực tập!");
   }
@@ -351,6 +359,8 @@ async function addInterns(rawId, body, user, deps = {}) {
   const result = await db.addProgramInterns(id, ids, user && user.id);
   if (result.outcome === "PROGRAM_NOT_FOUND") throw new HttpError(404, "Không tìm thấy chương trình thực tập!");
   if (result.outcome === "INTERN_NOT_FOUND") throw new HttpError(400, `Không tìm thấy thực tập sinh: ${result.missing.join(", ")}!`);
+  if (result.outcome === "DATES_REQUIRED") throw new HttpError(409, "Cần đặt đủ ngày bắt đầu và kết thúc trước khi xếp thành viên!");
+  if (result.outcome === "OVERLAP") throw new HttpError(409, "Thực tập sinh có chương trình trùng thời gian hoặc chưa đặt lịch. Hãy kiểm tra lịch sử chương trình trước khi xếp!");
   if (result.outcome === "CAPACITY_EXCEEDED")
     throw new HttpError(409, `Chương trình chỉ nhận tối đa ${result.capacity} thực tập sinh (hiện có ${result.current})!`);
   await notifyInternsAdded(program, result.added, deps);

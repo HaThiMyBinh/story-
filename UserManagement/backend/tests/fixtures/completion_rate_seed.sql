@@ -1,3 +1,5 @@
+-- LEGACY/MIGRATION fixture: profile statuses do NOT become course results.
+-- New memberships stay IN_PROGRESS until HR confirms each result. Existing overlapping legacy rows are retained for review.
 -- OPTIONAL FIXTURE: ONLY for a NEW DISPOSABLE test database after schema.sql + seed_data.sql.
 -- Never import into a user/production database. No UPDATE/DELETE statements.
 SET NAMES utf8mb4;

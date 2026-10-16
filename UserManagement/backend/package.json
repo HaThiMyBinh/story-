@@ -62,7 +62,10 @@
     "test:intern-origin-api": "node tests/test_intern_origin_report_api.js",
     "test:completion-rate-unit": "node tests/test_completion_rate_unit.js",
     "test:completion-rate-api": "node tests/test_completion_rate_api.js",
-    "test:completion-rate-browser": "node tests/test_completion_rate_browser.js"
+    "test:completion-rate-browser": "node tests/test_completion_rate_browser.js",
+    "migrate:program-completion": "node scripts/migrate_program_completion.js",
+    "test:program-completion-api": "node tests/test_program_completion_api.js",
+    "test:program-completion-browser": "node tests/test_program_completion_browser.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
