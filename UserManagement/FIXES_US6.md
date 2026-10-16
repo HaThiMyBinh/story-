@@ -70,4 +70,3 @@ Fixture bổ sung backend/tests/fixtures/completion_rate_seed.sql chỉ được
 - Các trạng thái cũ/thiếu không được tự chuyển đổi; vẫn hiện trong nhóm chưa hoàn thành và được đếm cảnh báo riêng.
 - Tổng hợp/chi tiết xử lý tập quan hệ thành viên đã lọc trong bộ nhớ để đảm bảo cùng cách đếm. Chưa benchmark tập dữ liệu lớn; không cắt top-N hoặc tạo nhóm Khác.
 - Số liệu giữa hai lần truy vấn có thể đổi nếu dữ liệu nghiệp vụ được cập nhật đồng thời.
-
