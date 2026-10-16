@@ -17,13 +17,8 @@ const router = express.Router();
 
 // GET /api/interns & GET /api/students
 async function handleGetInterns(req, res) {
-  let filters;
   try {
-    filters = normalizeInternFilters(req.query);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
-  try {
+    const filters = normalizeInternFilters(req.query);
     if (req.user.role === "Mentor") {
       return res.json(
         await db.getStudentsForMentorEmail(req.user.email, filters),
@@ -48,18 +43,14 @@ router.get(
   "/interns/filter-options",
   requireRole("Admin", "HR"),
   async (req, res) => {
-    let university = "";
     try {
+      let university = "";
       if (Object.prototype.hasOwnProperty.call(req.query, "university")) {
         university =
           normalizeInternFilters({
             university: req.query.university,
           }).university || "";
       }
-    } catch (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    try {
       return res.json(await db.getInternFilterOptions({ university }));
     } catch (err) {
       return sendRouteError(
@@ -76,13 +67,8 @@ router.get("/interns/count", requireRole("Admin", "HR"), async (req, res) => {
       error: "API đếm chỉ nhận tham số unassigned.",
     });
   }
-  let filters;
   try {
-    filters = normalizeInternFilters(req.query);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
-  try {
+    const filters = normalizeInternFilters(req.query);
     return res.json({ count: await db.countInterns(filters) });
   } catch (err) {
     return sendRouteError(res, err, "Lỗi đếm hồ sơ thực tập sinh!");

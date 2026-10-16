@@ -303,12 +303,7 @@ async function overview(query = {}) {
   for (const key of ["q", "university"]) {
     if (has(query, key)) picked[key] = query[key];
   }
-  let filters;
-  try {
-    filters = normalizeInternFilters(picked);
-  } catch (err) {
-    throw new HttpError(400, err.message);
-  }
+  const filters = normalizeInternFilters(picked);
   const items = await db.listAllowanceOverview({
     filters,
     today: getVietnamToday(),

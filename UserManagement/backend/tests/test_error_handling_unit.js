@@ -311,3 +311,33 @@ test("email test endpoint hides SMTP details and keeps configuration errors acti
     queue.sendTestEmail = originals.sendTestEmail;
   }
 });
+
+test("intern filter routes return shared 400 responses for invalid parameters", async () => {
+  const router = require("../routes/interns.routes");
+  for (const [path, query, message] of [
+    ["/interns", { q: ["x", "y"] }, "Tham số q phải là một chuỗi duy nhất."],
+    [
+      "/students",
+      { major: "x".repeat(101) },
+      "Tham số major không được vượt quá 100 ký tự.",
+    ],
+    [
+      "/interns/filter-options",
+      { university: ["A", "B"] },
+      "Tham số university phải là một chuỗi duy nhất.",
+    ],
+    [
+      "/interns/count",
+      { unassigned: ["true", "false"] },
+      "Tham số unassigned chỉ nhận giá trị true hoặc false.",
+    ],
+  ]) {
+    const handler = router.stack
+      .find((layer) => layer.route?.path === path && layer.route.methods.get)
+      .route.stack.at(-1).handle;
+    const res = response();
+    await handler({ user: { role: "HR" }, query }, res);
+    assert.equal(res.statusCode, 400, path);
+    assert.deepEqual(res.body, { error: message }, path);
+  }
+});

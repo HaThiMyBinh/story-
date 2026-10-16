@@ -1,12 +1,19 @@
 # Thống nhất định dạng và xử lý lỗi
 
+## Bổ sung: lỗi kiểm tra bộ lọc thực tập sinh
+
+- normalizeInternFilters ném HttpError(400) cho tham số sai kiểu, quá dài hoặc unassigned không hợp lệ. Ba nhánh danh sách, filter-options và count trong interns.routes dùng chung sendRouteError; gộp khối try/catch, không còn trả err.message trực tiếp.
+- allowances.overview gọi thẳng bộ chuẩn hóa, bỏ khối bắt rồi tạo lại lỗi 400 không cần thiết.
+- Đã chạy: test_intern_filter_unit.js đạt; test_error_handling_unit.js đạt 9/9, gồm lỗi bộ lọc qua cả /interns, /students, /interns/filter-options, /interns/count; test_allowances_unit.js đạt 108/108; test_intern_filter_api.js đạt trên MySQL 8.0.46 ở DB thử nghiệm riêng; Prettier đạt cho các tệp sửa. Không chạy lại toàn bộ API trong lần bổ sung này.
+
+
 ## Bổ sung: thống nhất các controller còn lại và sửa thông báo hỗ trợ
 
 - Xóa 12 hàm sendError cục bộ trong allowances, applications, attendance, contracts, documents, email, evaluations, finalReports, programs, schedule, tasks và weeklyReports. Các controller dùng sendError/makeEndpoint từ endpoint.js; nhánh lỗi đọc danh sách trong interns.routes dùng sendRouteError. Các lỗi controller có cùng success=false, message và error; route cũ giữ dạng error để tương thích.
 - Lỗi không xác định và mọi 5xx chỉ trả thông báo chung, chi tiết được ghi ở server. Lỗi 4xx giữ thông báo nghiệp vụ và metadata; chuyển cảnh báo INCOMPLETE_EVALUATION của finalReports sang HttpError.extra để giữ code/details cho bước xác nhận trên giao diện.
 - Gửi email thử: thiếu cấu hình SMTP trả 400 với hướng dẫn; lỗi gửi ngoài dự kiến trả 500 an toàn qua hàm chung, không trả nguyên phản hồi SMTP. Chưa thử gửi email qua SMTP thật trong lần sửa này.
 - findUserIdsByInternIds chuyển hai biểu thức email sang utf8mb4 và cùng collation utf8mb4_unicode_ci trước khi so sánh không phân biệt hoa/thường. Giữ truy vấn tham số hóa, không ALTER TABLE hay cập nhật dữ liệu người dùng.
-- test_error_handling_unit.js hiện có 8 kiểm tra, bao phủ tất cả controller vừa chuyển, nhánh CSV của finalReports, interns.routes, SMTP và metadata 4xx. Tất cả đạt.
+- test_error_handling_unit.js ở lần sửa đó có 8 kiểm tra, bao phủ tất cả controller vừa chuyển, nhánh CSV của finalReports, interns.routes, SMTP và metadata 4xx. Tất cả đạt.
 - Chạy lại API trên DB thử nghiệm us6_test_results riêng, MySQL 8.0.46: users.email vẫn là utf8mb4_0900_ai_ci, intern_profiles.email vẫn là utf8mb4_unicode_ci. test_support_requests_api.js đạt 37/37, gồm thông báo SUPPORT_REQUEST_UPDATED trước đây lỗi; test_final_reports_api.js đạt 31/31, gồm xác nhận báo cáo thiếu đánh giá. Cả hai tiến trình thoát mã 0.
 - `node tests/run_all.js --unit`: 29 suite đạt, 0 lỗi, 0 bỏ qua (gồm 8 kiểm tra xử lý lỗi). `prettier --check backend Frontend`: đạt.
 - Không có tệp mới còn sót trong uploads sau test; permissions.json không đổi. Chưa chạy toàn bộ API suite/npm test.
