@@ -448,3 +448,5 @@ HR có VIEW_REPORTS xác nhận kết quả riêng từng chương trình tại 
 Báo cáo trong Report Hub có bộ lọc thời gian chương trình/trạng thái chương trình, thống kê theo lượt tham gia và số người riêng, drill-down và CSV.
 
 Xem [FIXES_US6.md](FIXES_US6.md) để biết định nghĩa, migration, API, kiểm thử và giới hạn.
+
+Ghi chú lần thống nhất định dạng/xử lý lỗi: [FIXES_CODE_STYLE.md](FIXES_CODE_STYLE.md).

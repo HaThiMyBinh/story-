@@ -6,7 +6,16 @@ const { getVietnamToday } = require("../utils/date");
 const { csvCell } = require("./finalReports.service");
 
 const ALLOWED_QUERY = ["groupBy", "status", "from", "to", "q", "limit"];
-const ALLOWED_INTERNS_QUERY = ["university", "major", "status", "from", "to", "q", "page", "pageSize"];
+const ALLOWED_INTERNS_QUERY = [
+  "university",
+  "major",
+  "status",
+  "from",
+  "to",
+  "q",
+  "page",
+  "pageSize",
+];
 const GROUP_BY_OPTIONS = ["university", "major", "both"];
 const VALID_STATUSES = ["Đang thực tập", "Hoàn thành", "Tạm dừng"];
 
@@ -55,12 +64,17 @@ function validateReportQuery(query = {}) {
   }
 
   let status = null;
-  if (query.status !== undefined && query.status !== null && query.status !== "") {
+  if (
+    query.status !== undefined &&
+    query.status !== null &&
+    query.status !== ""
+  ) {
     if (typeof query.status !== "string" || query.status.trim().length > 50) {
       throw new HttpError(400, "Trạng thái không hợp lệ!");
     }
     status = query.status.trim();
-    if (!VALID_STATUSES.includes(status)) throw new HttpError(400, "Trạng thái không hợp lệ!");
+    if (!VALID_STATUSES.includes(status))
+      throw new HttpError(400, "Trạng thái không hợp lệ!");
   }
 
   let from = null;
@@ -125,7 +139,11 @@ function validateInternsQuery(query = {}) {
   }
 
   let pageSize = 20;
-  if (query.pageSize !== undefined && query.pageSize !== null && query.pageSize !== "") {
+  if (
+    query.pageSize !== undefined &&
+    query.pageSize !== null &&
+    query.pageSize !== ""
+  ) {
     const rawPageSize = String(query.pageSize).trim();
     if (!/^[1-9]\d*$/.test(rawPageSize)) {
       throw new HttpError(400, "Phân trang không hợp lệ!");
@@ -138,12 +156,17 @@ function validateInternsQuery(query = {}) {
   }
 
   let status = null;
-  if (query.status !== undefined && query.status !== null && query.status !== "") {
+  if (
+    query.status !== undefined &&
+    query.status !== null &&
+    query.status !== ""
+  ) {
     if (typeof query.status !== "string" || query.status.trim().length > 50) {
       throw new HttpError(400, "Trạng thái không hợp lệ!");
     }
     status = query.status.trim();
-    if (!VALID_STATUSES.includes(status)) throw new HttpError(400, "Trạng thái không hợp lệ!");
+    if (!VALID_STATUSES.includes(status))
+      throw new HttpError(400, "Trạng thái không hợp lệ!");
   }
 
   let from = null;
@@ -172,7 +195,8 @@ function validateInternsQuery(query = {}) {
     q = query.q.trim();
   }
 
-  const university = query.university != null ? String(query.university).trim() : null;
+  const university =
+    query.university != null ? String(query.university).trim() : null;
   const major = query.major != null ? String(query.major).trim() : null;
 
   if (!university && !major) {
@@ -190,7 +214,12 @@ function groupItems(items, total, limit = 20) {
     const key = unk ? "__UNKNOWN__" : normalizeKey(item.rawName);
     const display = unk ? "Chưa cập nhật" : cleanText(item.rawName);
     if (!map.has(key)) {
-      map.set(key, { key, count: 0, variants: Object.create(null), isUnknown: unk });
+      map.set(key, {
+        key,
+        count: 0,
+        variants: Object.create(null),
+        isUnknown: unk,
+      });
     }
     const grp = map.get(key);
     grp.count += count;
@@ -203,13 +232,17 @@ function groupItems(items, total, limit = 20) {
     if (!grp.isUnknown) {
       let maxCount = -1;
       for (const [v, c] of Object.entries(grp.variants)) {
-        if (c > maxCount || (c === maxCount && v.localeCompare(bestName, "vi") < 0)) {
+        if (
+          c > maxCount ||
+          (c === maxCount && v.localeCompare(bestName, "vi") < 0)
+        ) {
           maxCount = c;
           bestName = v;
         }
       }
     }
-    const percent = total > 0 ? Number(((grp.count * 100) / total).toFixed(1)) : 0;
+    const percent =
+      total > 0 ? Number(((grp.count * 100) / total).toFixed(1)) : 0;
     list.push({
       key: grp.key,
       name: bestName,
@@ -249,16 +282,24 @@ function groupItems(items, total, limit = 20) {
     }
   }
 
-  const result = kept.map(({ name, count, percent }) => ({ name, count, percent }));
+  const result = kept.map(({ name, count, percent }) => ({
+    name,
+    count,
+    percent,
+  }));
   if (remainder.length > 0) {
     const khacCount = remainder.reduce((s, x) => s + x.count, 0);
-    const khacPercent = total > 0 ? Number(((khacCount * 100) / total).toFixed(1)) : 0;
+    const khacPercent =
+      total > 0 ? Number(((khacCount * 100) / total).toFixed(1)) : 0;
     result.push({ name: "Khác", count: khacCount, percent: khacPercent });
   }
   return result;
 }
 
-function buildOriginReport(internRows = [], { groupBy = "both", limit = 20, funnelRows = [] } = {}) {
+function buildOriginReport(
+  internRows = [],
+  { groupBy = "both", limit = 20, funnelRows = [] } = {},
+) {
   const total = internRows.reduce((sum, r) => sum + Number(r.count || 0), 0);
   const unknown = internRows
     .filter((r) => isUnknown(r.university) || isUnknown(r.major))
@@ -310,11 +351,15 @@ function buildOriginReport(internRows = [], { groupBy = "both", limit = 20, funn
 
   for (const row of internRows) {
     const c = Number(row.count || 0);
-    const uKey = isUnknown(row.university) ? "__UNKNOWN__" : normalizeKey(row.university);
+    const uKey = isUnknown(row.university)
+      ? "__UNKNOWN__"
+      : normalizeKey(row.university);
     const mKey = isUnknown(row.major) ? "__UNKNOWN__" : normalizeKey(row.major);
 
-    const uTarget = uniKeyMap.get(uKey) || (uniNames.includes("Khác") ? "Khác" : null);
-    const mTarget = majorKeyMap.get(mKey) || (majorNames.includes("Khác") ? "Khác" : null);
+    const uTarget =
+      uniKeyMap.get(uKey) || (uniNames.includes("Khác") ? "Khác" : null);
+    const mTarget =
+      majorKeyMap.get(mKey) || (majorNames.includes("Khác") ? "Khác" : null);
 
     if (uTarget && mTarget) {
       matrixData[uTarget][mTarget] = (matrixData[uTarget][mTarget] || 0) + c;
@@ -367,13 +412,19 @@ function buildOriginReport(internRows = [], { groupBy = "both", limit = 20, funn
     if (!item.isUnknown) {
       let maxCount = -1;
       for (const [v, c] of Object.entries(item.variants)) {
-        if (c > maxCount || (c === maxCount && v.localeCompare(name, "vi") < 0)) {
+        if (
+          c > maxCount ||
+          (c === maxCount && v.localeCompare(name, "vi") < 0)
+        ) {
           maxCount = c;
           name = v;
         }
       }
     }
-    const approvalRate = item.applied > 0 ? Number(((item.approved * 100) / item.applied).toFixed(1)) : 0;
+    const approvalRate =
+      item.applied > 0
+        ? Number(((item.approved * 100) / item.applied).toFixed(1))
+        : 0;
     funnel.push({
       name,
       applied: item.applied,
@@ -431,41 +482,102 @@ async function exportCsv(query = {}) {
   const lines = [];
 
   // 1. Tiêu đề và bộ lọc
-  lines.push([csvCell("BÁO CÁO THỐNG KÊ THỰC TẬP SINH THEO TRƯỜNG / NGÀNH")].join(","));
+  lines.push(
+    [csvCell("BÁO CÁO THỐNG KÊ THỰC TẬP SINH THEO TRƯỜNG / NGÀNH")].join(","),
+  );
   lines.push([csvCell(`Thời điểm xuất: ${today}`)].join(","));
-  lines.push([csvCell(`Trạng thái lọc: ${filters.status || "Tất cả"}`)].join(","));
-  lines.push([csvCell(`Khoảng ngày: ${filters.from || "Không giới hạn"} đến ${filters.to || "Không giới hạn"}`)].join(","));
+  lines.push(
+    [csvCell(`Trạng thái lọc: ${filters.status || "Tất cả"}`)].join(","),
+  );
+  lines.push(
+    [
+      csvCell(
+        `Khoảng ngày: ${filters.from || "Không giới hạn"} đến ${filters.to || "Không giới hạn"}`,
+      ),
+    ].join(","),
+  );
   lines.push([csvCell(`Từ khóa tìm kiếm: ${filters.q || "Không"}`)].join(","));
-  lines.push([csvCell(`Tổng số thực tập sinh: ${data.total}`), csvCell(`Hồ sơ chưa cập nhật trường/ngành: ${data.unknown}`)].join(","));
+  lines.push(
+    [
+      csvCell(`Tổng số thực tập sinh: ${data.total}`),
+      csvCell(`Hồ sơ chưa cập nhật trường/ngành: ${data.unknown}`),
+    ].join(","),
+  );
   lines.push("");
 
   // 2. Thống kê theo trường
   lines.push([csvCell("1. THỐNG KÊ THEO TRƯỜNG")].join(","));
-  lines.push([csvCell("STT"), csvCell("Tên trường"), csvCell("Số lượng"), csvCell("Tỷ lệ (%)")].join(","));
+  lines.push(
+    [
+      csvCell("STT"),
+      csvCell("Tên trường"),
+      csvCell("Số lượng"),
+      csvCell("Tỷ lệ (%)"),
+    ].join(","),
+  );
   if (data.byUniversity.length === 0) {
-    lines.push([csvCell(""), csvCell("Không có dữ liệu"), csvCell(0), csvCell("0%")].join(","));
+    lines.push(
+      [
+        csvCell(""),
+        csvCell("Không có dữ liệu"),
+        csvCell(0),
+        csvCell("0%"),
+      ].join(","),
+    );
   } else {
     data.byUniversity.forEach((u, i) => {
-      lines.push([csvCell(i + 1), csvCell(u.name), csvCell(u.count), csvCell(`${u.percent}%`)].join(","));
+      lines.push(
+        [
+          csvCell(i + 1),
+          csvCell(u.name),
+          csvCell(u.count),
+          csvCell(`${u.percent}%`),
+        ].join(","),
+      );
     });
   }
   lines.push("");
 
   // 3. Thống kê theo ngành
   lines.push([csvCell("2. THỐNG KÊ THEO NGÀNH")].join(","));
-  lines.push([csvCell("STT"), csvCell("Tên ngành"), csvCell("Số lượng"), csvCell("Tỷ lệ (%)")].join(","));
+  lines.push(
+    [
+      csvCell("STT"),
+      csvCell("Tên ngành"),
+      csvCell("Số lượng"),
+      csvCell("Tỷ lệ (%)"),
+    ].join(","),
+  );
   if (data.byMajor.length === 0) {
-    lines.push([csvCell(""), csvCell("Không có dữ liệu"), csvCell(0), csvCell("0%")].join(","));
+    lines.push(
+      [
+        csvCell(""),
+        csvCell("Không có dữ liệu"),
+        csvCell(0),
+        csvCell("0%"),
+      ].join(","),
+    );
   } else {
     data.byMajor.forEach((m, i) => {
-      lines.push([csvCell(i + 1), csvCell(m.name), csvCell(m.count), csvCell(`${m.percent}%`)].join(","));
+      lines.push(
+        [
+          csvCell(i + 1),
+          csvCell(m.name),
+          csvCell(m.count),
+          csvCell(`${m.percent}%`),
+        ].join(","),
+      );
     });
   }
   lines.push("");
 
   // 4. Ma trận Trường x Ngành
   lines.push([csvCell("3. MA TRẬN TRƯỜNG × NGÀNH")].join(","));
-  const matrixHeaders = [csvCell("Trường / Ngành"), ...data.matrix.majors.map(csvCell), csvCell("Tổng cộng")];
+  const matrixHeaders = [
+    csvCell("Trường / Ngành"),
+    ...data.matrix.majors.map(csvCell),
+    csvCell("Tổng cộng"),
+  ];
   lines.push(matrixHeaders.join(","));
   if (data.matrix.universities.length === 0) {
     lines.push([csvCell("Không có dữ liệu")].join(","));
@@ -489,28 +601,42 @@ async function exportCsv(query = {}) {
 
   // 5. Phễu tuyển dụng theo trường
   lines.push([csvCell("4. PHỄU TUYỂN DỤNG THEO TRƯỜNG (ỨNG VIÊN)")].join(","));
-  lines.push([
-    csvCell("STT"),
-    csvCell("Tên trường"),
-    csvCell("Số hồ sơ nộp"),
-    csvCell("Đã duyệt"),
-    csvCell("Từ chối"),
-    csvCell("Chờ duyệt"),
-    csvCell("Tỷ lệ duyệt (%)"),
-  ].join(","));
+  lines.push(
+    [
+      csvCell("STT"),
+      csvCell("Tên trường"),
+      csvCell("Số hồ sơ nộp"),
+      csvCell("Đã duyệt"),
+      csvCell("Từ chối"),
+      csvCell("Chờ duyệt"),
+      csvCell("Tỷ lệ duyệt (%)"),
+    ].join(","),
+  );
   if (data.funnel.length === 0) {
-    lines.push([csvCell(""), csvCell("Không có dữ liệu"), csvCell(0), csvCell(0), csvCell(0), csvCell(0), csvCell("0%")].join(","));
+    lines.push(
+      [
+        csvCell(""),
+        csvCell("Không có dữ liệu"),
+        csvCell(0),
+        csvCell(0),
+        csvCell(0),
+        csvCell(0),
+        csvCell("0%"),
+      ].join(","),
+    );
   } else {
     data.funnel.forEach((f, i) => {
-      lines.push([
-        csvCell(i + 1),
-        csvCell(f.name),
-        csvCell(f.applied),
-        csvCell(f.approved),
-        csvCell(f.rejected),
-        csvCell(f.pending),
-        csvCell(`${f.approvalRate}%`),
-      ].join(","));
+      lines.push(
+        [
+          csvCell(i + 1),
+          csvCell(f.name),
+          csvCell(f.applied),
+          csvCell(f.approved),
+          csvCell(f.rejected),
+          csvCell(f.pending),
+          csvCell(`${f.approvalRate}%`),
+        ].join(","),
+      );
     });
   }
 

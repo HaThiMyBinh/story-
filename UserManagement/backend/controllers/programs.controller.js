@@ -81,15 +81,28 @@ function interns(req, res) {
 }
 
 function availableInterns(req, res) {
-  return run(res, () => service.listAvailableInterns(req.params.id), "Lấy thực tập sinh chưa thuộc chương trình thành công!");
+  return run(
+    res,
+    () => service.listAvailableInterns(req.params.id),
+    "Lấy thực tập sinh chưa thuộc chương trình thành công!",
+  );
 }
 
 function addInterns(req, res) {
-  return run(res, () => service.addInterns(req.params.id, req.body, req.user), "Đã thêm thực tập sinh vào chương trình!", 201);
+  return run(
+    res,
+    () => service.addInterns(req.params.id, req.body, req.user),
+    "Đã thêm thực tập sinh vào chương trình!",
+    201,
+  );
 }
 
 function removeIntern(req, res) {
-  return run(res, () => service.removeIntern(req.params.id, req.params.internId), "Đã gỡ thực tập sinh khỏi chương trình!");
+  return run(
+    res,
+    () => service.removeIntern(req.params.id, req.params.internId),
+    "Đã gỡ thực tập sinh khỏi chương trình!",
+  );
 }
 
 function assignMentor(req, res) {

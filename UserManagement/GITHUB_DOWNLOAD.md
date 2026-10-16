@@ -1,6 +1,6 @@
 # Tải và chạy dự án
 
-Tải UserManagement_US6_program_results.zip tại thư mục gốc GitHub (UserManagement_US6.zip cũng là bản mới nhất).
+Tải UserManagement_US6_clean.zip (bản dọn định dạng và xử lý lỗi) hoặc UserManagement_US6_program_results.zip tại thư mục gốc GitHub (UserManagement_US6.zip cũng là bản mới nhất).
 
 Giữ cấu hình DB/email riêng; ZIP không chứa mật khẩu riêng. Nếu dựng máy mới, tạo db_config.json/mail_config.json từ tệp example.
 

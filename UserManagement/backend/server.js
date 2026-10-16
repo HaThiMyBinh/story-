@@ -51,11 +51,29 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static(FRONTEND_DIR));
-app.use("/api/final-reports", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
-app.use("/api/me/attendance", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
-app.use("/api/reports/interns-by-origin", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
-app.use("/api/reports/completion-rate", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
-app.use(/^\/api\/programs\/[^/]+\/interns\/[^/]+\/completion$/, (req,res,next) => { res.set("Cache-Control","private, no-store"); next(); });
+app.use("/api/final-reports", (req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
+app.use("/api/me/attendance", (req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
+app.use("/api/reports/interns-by-origin", (req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
+app.use("/api/reports/completion-rate", (req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
+app.use(
+  /^\/api\/programs\/[^/]+\/interns\/[^/]+\/completion$/,
+  (req, res, next) => {
+    res.set("Cache-Control", "private, no-store");
+    next();
+  },
+);
 app.use(apiAuthentication);
 ensurePermissionsFile();
 

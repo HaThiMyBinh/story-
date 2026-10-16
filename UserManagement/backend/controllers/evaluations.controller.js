@@ -76,4 +76,9 @@ async function deleteEvaluation(req, res) {
   }
 }
 
-module.exports = { getOverview, getEvaluation, saveEvaluation, deleteEvaluation };
+module.exports = {
+  getOverview,
+  getEvaluation,
+  saveEvaluation,
+  deleteEvaluation,
+};

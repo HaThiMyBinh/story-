@@ -21,7 +21,9 @@ function parseId(raw) {
 function describeScope(type, value, programs = []) {
   if (type === "UNIVERSITY") return `Trường: ${value || ""}`.trim();
   if (type === "PROGRAM") {
-    const program = (programs || []).find((p) => String(p.id) === String(value));
+    const program = (programs || []).find(
+      (p) => String(p.id) === String(value),
+    );
     return `Chương trình: ${program ? program.name : `#${value}`}`;
   }
   return "Toàn bộ thực tập sinh";
