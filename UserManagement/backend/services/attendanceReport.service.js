@@ -1,3 +1,4 @@
+const exportModels = require("./export/reportModels");
 // Báo cáo chuyên cần (HR): tổng hợp đi làm, nghỉ phép, vắng, đi muộn theo lịch làm việc áp dụng.
 // Dữ liệu được tải theo lô (không truy vấn theo từng ngày/từng người); phần tính toán là hàm thuần.
 const db = require("../db");
@@ -356,13 +357,14 @@ async function report(query) {
   const range = validate(query);
   const reports = (await computeReports(range)).filter((r) => r.hasActivity);
   const pendingLeaveRequests = (await db.listPendingLeaves(null)).length;
-  return {
+  const data = {
     range: { from: range.from, to: range.to },
     scope: { type: range.scopeType, value: range.scopeValue },
     summary: { ...sumReports(reports), pendingLeaveRequests },
     groups: groupReports(reports, range.groupBy),
     interns: reports.map(stripDays),
   };
+  return { ...data, exportModel: exportModels.attendance(data, range) };
 }
 async function detail(rawId, query) {
   if (!/^[1-9]\d*$/.test(String(rawId)))
@@ -435,4 +437,5 @@ module.exports = {
   report,
   detail,
   exportCsv,
+  exportXlsx: async (query) => (await report(query)).exportModel,
 };

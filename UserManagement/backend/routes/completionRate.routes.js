@@ -15,4 +15,9 @@ router.get(
   ...hrReport,
   controller.exportCsv,
 );
+router.get(
+  "/reports/completion-rate/export.xlsx",
+  ...hrReport,
+  controller.xlsx,
+);
 module.exports = router;

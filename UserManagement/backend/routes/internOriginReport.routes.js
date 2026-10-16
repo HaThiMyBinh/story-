@@ -18,4 +18,9 @@ router.get(
   controller.interns,
 );
 
+router.get(
+  "/reports/interns-by-origin/export.xlsx",
+  ...hrReport,
+  controller.xlsx,
+);
 module.exports = router;

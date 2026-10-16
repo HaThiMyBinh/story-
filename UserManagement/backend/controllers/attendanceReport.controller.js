@@ -1,5 +1,5 @@
 const service = require("../services/attendanceReport.service");
-const { makeEndpoint, sendError } = require("./endpoint");
+const { makeEndpoint, sendError, makeXlsxEndpoint } = require("./endpoint");
 const endpoint = makeEndpoint("ATTENDANCE_REPORT");
 
 async function exportCsv(req, res) {
@@ -14,6 +14,9 @@ async function exportCsv(req, res) {
   }
 }
 module.exports = {
+  xlsx: makeXlsxEndpoint("ATTENDANCEREPORT", (req) =>
+    service.exportXlsx(req.query),
+  ),
   report: endpoint(
     (req) => service.report(req.query),
     "Lấy báo cáo chuyên cần thành công!",

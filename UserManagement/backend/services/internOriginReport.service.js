@@ -1,3 +1,4 @@
+const exportModels = require("./export/reportModels");
 // Dịch vụ Thống kê thực tập sinh theo trường / ngành (HR - US5)
 const db = require("../db");
 const { HttpError } = require("../errors");
@@ -456,11 +457,20 @@ async function report(query = {}) {
     db.getInternOriginCounts(filters),
     db.getCandidateFunnelByUniversity(filters),
   ]);
-  return buildOriginReport(internRows, {
+  const data = buildOriginReport(internRows, {
     groupBy: filters.groupBy,
     limit: filters.limit,
     funnelRows,
   });
+  const exportData =
+    filters.groupBy === "both"
+      ? data
+      : buildOriginReport(internRows, {
+          groupBy: "both",
+          limit: filters.limit,
+          funnelRows,
+        });
+  return { ...data, exportModel: exportModels.origin(exportData, filters) };
 }
 
 async function interns(query = {}) {
@@ -658,4 +668,5 @@ module.exports = {
   report,
   interns,
   exportCsv,
+  exportXlsx: async (query) => (await report(query)).exportModel,
 };

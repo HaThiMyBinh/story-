@@ -55,7 +55,7 @@ app.use("/api/final-reports", (req, res, next) => {
   res.set("Cache-Control", "private, no-store");
   next();
 });
-app.use("/api/me/attendance", (req, res, next) => {
+app.use(["/api/me/attendance", "/api/attendance/report"], (req, res, next) => {
   res.set("Cache-Control", "private, no-store");
   next();
 });

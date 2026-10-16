@@ -1,6 +1,8 @@
 # UserManagement
 
-[Tải ZIP mới nhất — US6 kết quả từng chương trình](UserManagement_US6_clean.zip)
+[Tải ZIP mới nhất — US7 xuất Excel/PDF](UserManagement_US7.zip)
+
+US7 thêm Excel và in PDF cho bốn báo cáo; cập nhật bằng `npm ci` trong backend. [Thay đổi và kết quả test US7](UserManagement/FIXES_US7.md).
 
 HR xác nhận kết quả riêng từng khóa; hoàn thành A không tự hoàn thành B. Chặn xếp trùng lịch và giữ kết quả đã chốt. Báo cáo có lọc, drill-down và CSV.
 

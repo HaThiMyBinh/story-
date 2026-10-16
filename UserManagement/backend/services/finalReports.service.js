@@ -1,3 +1,4 @@
+const exportModels = require("./export/reportModels");
 const db = require("../db");
 const { HttpError } = require("../errors");
 const weeks = require("../utils/weeks");
@@ -466,6 +467,7 @@ async function detail(rawId) {
   report.sends = sends;
   report.sendCount = sends.length;
   report.isSent = sends.length > 0;
+  report.exportModel = exportModels.finalReport(report);
   return report;
 }
 async function update(rawId, input) {
@@ -685,4 +687,9 @@ module.exports = {
   finalize,
   remove,
   exportCsv,
+  exportXlsx: async (id, query = {}) => {
+    if (Object.keys(query).length)
+      throw new HttpError(400, "Xuất báo cáo cuối kỳ không nhận tham số lọc!");
+    return (await detail(id)).exportModel;
+  },
 };

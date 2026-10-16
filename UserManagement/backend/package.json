@@ -67,11 +67,15 @@
     "test:program-completion-api": "node tests/test_program_completion_api.js",
     "test:program-completion-browser": "node tests/test_program_completion_browser.js",
     "test:error-handling-unit": "node tests/test_error_handling_unit.js",
-    "test:responsive-browser": "node tests/test_responsive_browser.js"
+    "test:responsive-browser": "node tests/test_responsive_browser.js",
+    "test:export-unit": "node tests/test_export_unit.js",
+    "test:export-api": "node tests/test_export_api.js",
+    "test:export-browser": "node tests/test_export_browser.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.6",
+    "exceljs": "4.4.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.4.0",

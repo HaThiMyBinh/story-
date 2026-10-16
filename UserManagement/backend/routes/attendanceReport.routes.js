@@ -14,4 +14,5 @@ router.get(
   controller.detail,
 );
 
+router.get("/attendance/report/export.xlsx", ...hrReport, controller.xlsx);
 module.exports = router;

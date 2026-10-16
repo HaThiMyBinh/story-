@@ -1,7 +1,10 @@
 const service = require("../services/finalReports.service");
-const { makeEndpoint, sendError } = require("./endpoint");
+const { makeEndpoint, sendError, makeXlsxEndpoint } = require("./endpoint");
 const endpoint = makeEndpoint("FINALREPORTS");
 module.exports = {
+  xlsx: makeXlsxEndpoint("FINALREPORTS", (req) =>
+    service.exportXlsx(req.params.id, req.query),
+  ),
   preview: endpoint(
     (req) => service.preview(req.query),
     "Xem trước báo cáo thành công!",

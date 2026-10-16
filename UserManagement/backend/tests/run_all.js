@@ -18,6 +18,14 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 
 // needsServer: cần MySQL và backend
 const SUITES = [
+  { name: "export-unit", file: "test_export_unit.js", needsServer: false },
+  { name: "export-api", file: "test_export_api.js", needsServer: true },
+  {
+    name: "export-browser",
+    file: "test_export_browser.js",
+    needsServer: false,
+    optionalBrowser: true,
+  },
   {
     name: "responsive-browser",
     file: "test_responsive_browser.js",

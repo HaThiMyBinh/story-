@@ -24,4 +24,35 @@ function makeEndpoint(tag) {
     };
   };
 }
-module.exports = { makeEndpoint, sendError };
+function makeXlsxEndpoint(tag, modelForRequest) {
+  return async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    try {
+      const {
+        renderXlsx,
+        filenames,
+        MIME,
+      } = require("../services/export/xlsx");
+      if (
+        Object.values(req.query || {}).some(
+          (value) => typeof value !== "string",
+        )
+      ) {
+        const { HttpError } = require("../errors");
+        throw new HttpError(400, "Tham số xuất không hợp lệ hoặc bị lặp!");
+      }
+      const model = await modelForRequest(req);
+      const content = await renderXlsx(model);
+      const names = filenames(model);
+      res.set("Content-Type", MIME);
+      res.set(
+        "Content-Disposition",
+        `attachment; filename="${names.ascii}"; filename*=UTF-8''${encodeURIComponent(names.unicode).replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)}`,
+      );
+      return res.send(content);
+    } catch (err) {
+      return sendError(res, err, tag);
+    }
+  };
+}
+module.exports = { makeEndpoint, sendError, makeXlsxEndpoint };
