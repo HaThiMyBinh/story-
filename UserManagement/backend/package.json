@@ -66,7 +66,8 @@
     "migrate:program-completion": "node scripts/migrate_program_completion.js",
     "test:program-completion-api": "node tests/test_program_completion_api.js",
     "test:program-completion-browser": "node tests/test_program_completion_browser.js",
-    "test:error-handling-unit": "node tests/test_error_handling_unit.js"
+    "test:error-handling-unit": "node tests/test_error_handling_unit.js",
+    "test:responsive-browser": "node tests/test_responsive_browser.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

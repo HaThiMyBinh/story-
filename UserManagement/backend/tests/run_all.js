@@ -19,6 +19,12 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 // needsServer: cần MySQL và backend
 const SUITES = [
   {
+    name: "responsive-browser",
+    file: "test_responsive_browser.js",
+    needsServer: false,
+    optionalBrowser: true,
+  },
+  {
     name: "error-handling-unit",
     file: "test_error_handling_unit.js",
     needsServer: false,

@@ -9,3 +9,5 @@ HR xác nhận kết quả riêng từng khóa; hoàn thành A không tự hoàn
 [Mã nguồn](UserManagement/) · [Migration, định nghĩa, kết quả kiểm thử và giới hạn](UserManagement/FIXES_US6.md)
 
 [Thống nhất định dạng và xử lý lỗi](UserManagement/FIXES_CODE_STYLE.md) — Prettier/LF, bỏ export thừa, handler lỗi dùng chung và kết quả kiểm thử.
+
+[Giao diện mobile và màu chủ đạo](UserManagement/FIXES_RESPONSIVE.md) — menu thu gọn, bố cục điện thoại và màu thống nhất ba trang.

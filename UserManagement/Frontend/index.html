@@ -18,8 +18,8 @@
 
     <style>
       :root {
-        --primary: #032ab8;
-        --primary-hover: #08377e;
+        --primary: #2563eb;
+        --primary-hover: #1d4ed8;
         --primary-light: #eef2ff;
         --slate-50: #f8fafc;
         --slate-100: #f1f5f9;
@@ -61,7 +61,6 @@
         flex-direction: column;
         border-right: 1px solid var(--slate-200);
         flex-shrink: 0;
-        transition: all 0.3s ease;
         z-index: 50;
       }
 
@@ -134,7 +133,7 @@
       .filter-field input:focus,
       .filter-field select:focus {
         border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(3, 42, 184, 0.15);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
       }
       .filter-bar .btn {
         height: 40px;
@@ -319,7 +318,7 @@
       /* TRANG BÁO CÁO & THỐNG KÊ: các nút mở báo cáo */
       .report-hub {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
         gap: 16px;
         margin-bottom: 20px;
       }
@@ -646,7 +645,7 @@
         font-size: 10px;
         padding: 2px 7px;
         border-radius: 12px;
-        background: rgba(79, 70, 229, 0.12);
+        background: rgba(37, 99, 235, 0.12);
         color: var(--primary);
         font-weight: 600;
       }
@@ -709,6 +708,7 @@
       /* MAIN CONTENT */
       main {
         flex: 1;
+        min-width: 0;
         display: flex;
         flex-direction: column;
         overflow: hidden;
@@ -754,7 +754,7 @@
         align-items: center;
         gap: 8px;
         padding: 9px 16px;
-        background: #0ea5e9;
+        background: var(--primary);
         color: white;
         text-decoration: none;
         border-radius: 8px;
@@ -764,7 +764,7 @@
       }
 
       .btn-public-register:hover {
-        background: #0284c7;
+        background: var(--primary-hover);
       }
 
       /* CONTENT BODY */
@@ -777,7 +777,7 @@
       /* STATS CARDS */
       .stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
         gap: 18px;
         margin-bottom: 26px;
       }
@@ -877,7 +877,7 @@
       /* FORM STYLES */
       .form-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
         gap: 16px;
         align-items: flex-end;
       }
@@ -905,7 +905,7 @@
 
       .form-control:focus {
         border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
       }
 
       .btn {
@@ -1083,7 +1083,7 @@
         background: #f8fafc;
       }
       .schedule-day.is-selected {
-        box-shadow: inset 0 0 0 2px #2563eb;
+        box-shadow: inset 0 0 0 2px var(--primary);
       }
       .schedule-day-number {
         display: inline-flex;
@@ -1113,7 +1113,7 @@
         background: #f59e0b;
       }
       .schedule-day-event.is-in-progress {
-        background: #2563eb;
+        background: var(--primary);
       }
       .schedule-day-event.is-completed {
         background: #16a34a;
@@ -1165,7 +1165,7 @@
         overflow-wrap: anywhere;
       }
       .my-info-item a {
-        color: #2563eb;
+        color: var(--primary);
         text-decoration: none;
       }
       .my-info-item a:hover {
@@ -1224,7 +1224,7 @@
         margin-top: 8px;
       }
       .schedule-today-item.is-in-progress {
-        border-left-color: #2563eb;
+        border-left-color: var(--primary);
       }
       .schedule-today-item.is-completed {
         border-left-color: #16a34a;
@@ -1251,7 +1251,7 @@
       .schedule-today-progress > span {
         display: block;
         height: 100%;
-        background: #2563eb;
+        background: var(--primary);
       }
       .schedule-today-empty {
         color: #475569;
@@ -1566,7 +1566,7 @@
       .task-progress-bar > span {
         display: block;
         height: 100%;
-        background: #2563eb;
+        background: var(--primary);
         border-radius: 999px;
       }
       .task-progress-bar > span.done {
@@ -1719,7 +1719,7 @@
         white-space: nowrap;
       }
       .task-attachments a {
-        color: #2563eb;
+        color: var(--primary);
         cursor: pointer;
         text-decoration: none;
       }
@@ -2719,11 +2719,178 @@
         flex-direction: column;
         gap: 16px;
       }
+
+      .sidebar-toggle,
+      .sidebar-close {
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 44px;
+        height: 44px;
+        border: 1px solid var(--slate-200);
+        border-radius: 8px;
+        background: white;
+        color: var(--slate-700);
+        cursor: pointer;
+      }
+      .sidebar-toggle svg,
+      .sidebar-close svg {
+        width: 22px;
+        height: 22px;
+      }
+      .sidebar-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 49;
+        border: 0;
+        background: rgba(15, 23, 42, 0.45);
+      }
+      :is(.sidebar-toggle, .sidebar-close, .nav-link):focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+      @media (max-width: 1024px) {
+        body {
+          height: 100dvh;
+        }
+        #appSidebar {
+          position: fixed;
+          inset: 0 auto 0 0;
+          width: min(272px, calc(100% - 48px));
+          transform: translateX(-100%);
+          visibility: hidden;
+          transition: transform 0.2s ease;
+        }
+        body.sidebar-open #appSidebar {
+          transform: translateX(0);
+          visibility: visible;
+        }
+        #appSidebar * {
+          transition-property:
+            background-color, color, border-color, transform, box-shadow;
+        }
+        .sidebar-toggle,
+        .sidebar-close {
+          display: inline-flex;
+        }
+        #appSidebar .brand {
+          padding: 0 12px;
+          gap: 8px;
+          flex-shrink: 0;
+        }
+        #appSidebar .brand-icon {
+          width: 30px;
+          flex-shrink: 0;
+        }
+        #appSidebar .brand-text h1 {
+          font-size: 13px;
+        }
+        .sidebar-close {
+          margin-left: auto;
+          width: 36px;
+        }
+        header {
+          padding: 10px 16px;
+          gap: 12px;
+          height: auto;
+          min-height: 70px;
+          flex-wrap: wrap;
+        }
+        .page-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .page-info h2 {
+          font-size: 17px;
+          overflow-wrap: break-word;
+        }
+        .header-actions {
+          gap: 8px;
+          flex-shrink: 0;
+          flex-wrap: wrap;
+          max-width: 100%;
+        }
+        .content-scroll {
+          min-height: 0;
+          padding: 20px 20px 32px;
+        }
+        .table-container {
+          max-width: 100%;
+        }
+        .card-header {
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+      }
+      @media (max-width: 600px) {
+        header {
+          padding: 10px 12px;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .page-info {
+          flex-basis: calc(100% - 60px);
+        }
+        .header-actions {
+          width: 100%;
+          justify-content: flex-end;
+        }
+        .content-scroll {
+          padding: 16px 12px 24px;
+        }
+        .card-body,
+        .card-header {
+          padding: 16px;
+        }
+        .card-body {
+          overflow-x: auto;
+        }
+        .stats-grid {
+          gap: 12px;
+        }
+        .stat-card {
+          padding: 16px;
+          min-width: 0;
+        }
+        .form-grid,
+        .report-hub {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .form-group,
+        .filter-field,
+        #crFilters > label {
+          min-width: 0;
+          width: 100%;
+        }
+        .form-control,
+        .filter-field input,
+        .filter-field select {
+          min-width: 0;
+          max-width: 100%;
+          width: 100%;
+        }
+        .table-container table {
+          min-width: 600px;
+        }
+        .notif-dropdown {
+          position: fixed;
+          top: 120px;
+          right: 12px;
+          width: calc(100vw - 24px);
+          max-width: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #appSidebar {
+          transition: none;
+        }
+      }
     </style>
   </head>
   <body>
     <!-- SIDEBAR -->
-    <aside>
+    <aside id="appSidebar" aria-label="Menu chính">
       <div class="brand">
         <div class="brand-icon">
           <i class="fa-solid fa-graduation-cap"></i>
@@ -2732,6 +2899,22 @@
           <h1>QUẢN LÝ THỰC TẬP</h1>
           <p>User Management & RBAC</p>
         </div>
+        <button
+          type="button"
+          class="sidebar-close"
+          id="sidebarClose"
+          aria-label="Đóng menu"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="m6 6 12 12M6 18 18 6" />
+          </svg>
+        </button>
       </div>
 
       <!-- DYNAMIC MENU LIST (ẨN/HIỆN THEO QUYỀN) -->
@@ -2763,10 +2946,37 @@
       </div>
     </aside>
 
+    <button
+      type="button"
+      id="sidebarBackdrop"
+      class="sidebar-backdrop"
+      aria-label="Đóng menu"
+      tabindex="-1"
+      hidden
+    ></button>
+
     <!-- MAIN AREA -->
     <main>
       <!-- TOP HEADER -->
       <header>
+        <button
+          type="button"
+          class="sidebar-toggle"
+          id="sidebarToggle"
+          aria-label="Mở menu"
+          aria-controls="appSidebar"
+          aria-expanded="false"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          </svg>
+        </button>
         <div class="page-info">
           <h2 id="pageTitle">Quản Lý Tài Khoản</h2>
           <p id="pageSubtitle">
@@ -4382,7 +4592,10 @@
             id="iorChartsRow"
             style="
               display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+              grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(360px, 100%), 1fr)
+              );
               gap: 18px;
               margin-bottom: 24px;
             "
@@ -5170,7 +5383,10 @@
           <div
             style="
               display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+              grid-template-columns: repeat(
+                auto-fit,
+                minmax(min(360px, 100%), 1fr)
+              );
               gap: 20px;
             "
           >
@@ -5681,7 +5897,7 @@
                       width: 36px;
                       height: 36px;
                       border-radius: 8px;
-                      background: rgba(3, 42, 184, 0.1);
+                      background: rgba(37, 99, 235, 0.1);
                       color: var(--primary);
                       display: flex;
                       align-items: center;
@@ -5896,7 +6112,7 @@
                       width: 36px;
                       height: 36px;
                       border-radius: 8px;
-                      background: rgba(3, 42, 184, 0.1);
+                      background: rgba(37, 99, 235, 0.1);
                       color: var(--primary);
                       display: flex;
                       align-items: center;
@@ -6033,7 +6249,7 @@
                 <div style="display: flex; align-items: center; gap: 12px">
                   <div
                     id="letterFileIcon"
-                    style="font-size: 26px; color: #2563eb"
+                    style="font-size: 26px; color: var(--primary)"
                   >
                     <i class="fa-solid fa-file-word"></i>
                   </div>
@@ -7457,6 +7673,87 @@
     <script>
       const API_BASE = "/api";
 
+      const sidebarMedia = window.matchMedia("(max-width: 1024px)");
+      function setSidebarOpen(open, restoreFocus = true) {
+        const sidebar = document.getElementById("appSidebar");
+        const toggle = document.getElementById("sidebarToggle");
+        const wasOpen = document.body.classList.contains("sidebar-open");
+        open = Boolean(open && sidebarMedia.matches);
+        if (!open) document.querySelector("main").inert = false;
+        if (!open && wasOpen && restoreFocus) toggle.focus();
+        document.body.classList.toggle("sidebar-open", open);
+        document.getElementById("sidebarBackdrop").hidden = !open;
+        toggle.setAttribute("aria-expanded", String(open));
+        sidebar.inert = sidebarMedia.matches && !open;
+        sidebar.setAttribute(
+          "aria-hidden",
+          String(sidebarMedia.matches && !open),
+        );
+        if (open) {
+          document.getElementById("sidebarClose").focus();
+          document.querySelector("main").inert = true;
+        }
+      }
+      function initSidebarNavigation() {
+        document
+          .getElementById("sidebarToggle")
+          .addEventListener("click", () => setSidebarOpen(true));
+        document
+          .getElementById("sidebarClose")
+          .addEventListener("click", () => setSidebarOpen(false));
+        document
+          .getElementById("sidebarBackdrop")
+          .addEventListener("click", () => setSidebarOpen(false));
+        sidebarMedia.addEventListener("change", () => {
+          const focused = document.activeElement;
+          if (
+            sidebarMedia.matches &&
+            document.getElementById("appSidebar").contains(focused)
+          )
+            document.getElementById("sidebarToggle").focus();
+          else if (
+            !sidebarMedia.matches &&
+            ["sidebarClose", "sidebarToggle"].includes(focused?.id)
+          )
+            document.querySelector("#sidebarMenu .nav-link")?.focus();
+          setSidebarOpen(false, false);
+        });
+        document
+          .getElementById("sidebarMenu")
+          .addEventListener("keydown", (event) => {
+            if (
+              (event.key === "Enter" || event.key === " ") &&
+              event.target.matches(".nav-link")
+            ) {
+              event.preventDefault();
+              event.target.click();
+            }
+          });
+        document.addEventListener("keydown", (event) => {
+          if (!document.body.classList.contains("sidebar-open")) return;
+          if (event.key === "Escape") {
+            event.preventDefault();
+            setSidebarOpen(false);
+          } else if (event.key === "Tab") {
+            const items = [
+              ...document.querySelectorAll(
+                '#appSidebar button, #appSidebar [tabindex="0"], #appSidebar a[href]',
+              ),
+            ].filter((el) => el.getClientRects().length && !el.disabled);
+            const first = items[0],
+              last = items.at(-1);
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          }
+        });
+        setSidebarOpen(false, false);
+      }
+
       // Danh sách định nghĩa các quyền trong hệ thống
       const PERMISSIONS_DEF = [
         {
@@ -7529,6 +7826,7 @@
       // KHỞI TẠO VÀ TẢI DỮ LIỆU BAN ĐẦU
       // =========================================================================
       window.addEventListener("DOMContentLoaded", async () => {
+        initSidebarNavigation();
         // Đọc phiên đăng nhập từ sessionStorage nếu có
         const storedUser = sessionStorage.getItem("currentUser");
         const token = getAuthToken();
@@ -8030,12 +8328,17 @@
           menuEl.appendChild(liStaffAttendance);
         }
 
+        menuEl.querySelectorAll(".nav-link").forEach((link) => {
+          link.tabIndex = 0;
+          link.setAttribute("role", "button");
+        });
         document.getElementById("menuCountBadge").innerText =
           `${allowedCount} mục`;
       }
 
       // CHUYỂN TAB VÀ CHẶN TRUY CẬP TRÊN UI
       function switchTab(tabId) {
+        setSidebarOpen(false);
         currentTab = tabId;
         document.querySelector(".content-scroll").scrollTop = 0;
         checkAccessAndRender(tabId);
@@ -14149,7 +14452,7 @@
       let finalReportOptions = { universities: [], programs: [] };
       let editingFinalReportId = null;
       const frCss = document.createElement("style");
-      frCss.textContent = `.fr-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px;margin-bottom:16px}.fr-field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--slate-700)}.fr-field.fr-span-2{grid-column:1/-1}.fr-field input,.fr-field select,.fr-field textarea{width:100%;padding:10px 14px;border:1px solid var(--slate-300);border-radius:8px;font-size:13.5px;font-weight:400;background:#fff;outline:none;font-family:inherit}.fr-field textarea{min-height:90px;resize:vertical}.fr-field input:focus,.fr-field select:focus,.fr-field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(3,42,184,.15)}.fr-req{color:var(--danger)}.fr-hint{font-weight:400;color:var(--slate-600);font-size:12px}.fr-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:4px}.fr-row-actions{display:flex;flex-wrap:wrap;gap:6px}.fr-sub{display:block;font-size:12px;color:var(--slate-600);margin-top:2px}.fr-badge-final{background:#e0f2fe;color:#0369a1}.fr-screen-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}.fr-screen-controls h2{margin-right:auto}.fr-send-panel{flex-basis:100%;display:grid;gap:12px;border-top:1px solid var(--slate-200);padding-top:14px;margin-top:6px}.fr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.fr-chip-wrap{display:inline-flex;align-items:center;border:1px solid var(--slate-300);border-radius:20px;background:var(--slate-50);overflow:hidden}.fr-chip{border:0;background:transparent;padding:5px 10px;font-size:12.5px;cursor:pointer;color:var(--slate-800)}.fr-chip:hover{background:var(--primary-light)}.fr-chip-x{border:0;border-left:1px solid var(--slate-200);background:transparent;padding:5px 8px;cursor:pointer;color:var(--slate-600)}.fr-chip-x:hover{background:#fee2e2;color:var(--danger)}.fr-history{flex-basis:100%;font-size:13px}.fr-history ul{margin:8px 0 0 18px;display:grid;gap:6px}@media(max-width:700px){.fr-form-grid{grid-template-columns:1fr}}`;
+      frCss.textContent = `.fr-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 20px;margin-bottom:16px}.fr-field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--slate-700)}.fr-field.fr-span-2{grid-column:1/-1}.fr-field input,.fr-field select,.fr-field textarea{width:100%;padding:10px 14px;border:1px solid var(--slate-300);border-radius:8px;font-size:13.5px;font-weight:400;background:#fff;outline:none;font-family:inherit}.fr-field textarea{min-height:90px;resize:vertical}.fr-field input:focus,.fr-field select:focus,.fr-field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.15)}.fr-req{color:var(--danger)}.fr-hint{font-weight:400;color:var(--slate-600);font-size:12px}.fr-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:4px}.fr-row-actions{display:flex;flex-wrap:wrap;gap:6px}.fr-sub{display:block;font-size:12px;color:var(--slate-600);margin-top:2px}.fr-badge-final{background:#e0f2fe;color:#0369a1}.fr-screen-controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}.fr-screen-controls h2{margin-right:auto}.fr-send-panel{flex-basis:100%;display:grid;gap:12px;border-top:1px solid var(--slate-200);padding-top:14px;margin-top:6px}.fr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}.fr-chip-wrap{display:inline-flex;align-items:center;border:1px solid var(--slate-300);border-radius:20px;background:var(--slate-50);overflow:hidden}.fr-chip{border:0;background:transparent;padding:5px 10px;font-size:12.5px;cursor:pointer;color:var(--slate-800)}.fr-chip:hover{background:var(--primary-light)}.fr-chip-x{border:0;border-left:1px solid var(--slate-200);background:transparent;padding:5px 8px;cursor:pointer;color:var(--slate-600)}.fr-chip-x:hover{background:#fee2e2;color:var(--danger)}.fr-history{flex-basis:100%;font-size:13px}.fr-history ul{margin:8px 0 0 18px;display:grid;gap:6px}@media(max-width:700px){.fr-form-grid{grid-template-columns:1fr}}`;
       document.head.appendChild(frCss);
       function finalReportStatusBadge(r) {
         if (r.status === "DRAFT")
@@ -14308,7 +14611,7 @@
         )
           .map(
             ([k, v]) =>
-              `<div>${escapeHtml(k)} <span style="display:inline-block;background:#2563eb;height:12px;width:${Math.min(100, v * 20)}%"></span> ${v}</div>`,
+              `<div>${escapeHtml(k)} <span style="display:inline-block;background:var(--primary);height:12px;width:${Math.min(100, v * 20)}%"></span> ${v}</div>`,
           )
           .join(
             "",
@@ -15082,7 +15385,7 @@
             );
             const bar = document.createElement("span");
             bar.style.width = `${Math.min(100, Math.max(0, Number(group.rate)))}%`;
-            bar.style.background = "#2563eb";
+            bar.style.background = "var(--primary)";
             progress.append(bar);
             const label = document.createElement("div");
             label.append(button, progress);
@@ -15493,7 +15796,7 @@
           uniBody.innerHTML = data.byUniversity
             .map((item) => {
               const isUnk = item.name === "Chưa cập nhật";
-              const barColor = isUnk ? "#94a3b8" : "#2563eb";
+              const barColor = isUnk ? "#94a3b8" : "var(--primary)";
               return `
               <div style="margin-bottom: 12px;${iorIsClickable(item.name, "") ? " cursor: pointer;" : ""}" ${iorTriggerAttrs(item.name, "", "Bấm để xem danh sách thực tập sinh nhóm " + item.name)}>
                 <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; margin-bottom: 4px;">
@@ -15629,7 +15932,7 @@
               .map((mj) => {
                 const count = m.data[uni]?.[mj] || 0;
                 if (count > 0 && iorIsClickable(uni, mj)) {
-                  return `<td style="cursor: pointer; font-weight: 600; color: #2563eb;" class="ior-detail-trigger" data-ior-university="${escapeHtml(uni)}" data-ior-major="${escapeHtml(mj)}" title="Xem ${count} thực tập sinh trường ${escapeHtml(uni)}, ngành ${escapeHtml(mj)}">${count}</td>`;
+                  return `<td style="cursor: pointer; font-weight: 600; color: var(--primary);" class="ior-detail-trigger" data-ior-university="${escapeHtml(uni)}" data-ior-major="${escapeHtml(mj)}" title="Xem ${count} thực tập sinh trường ${escapeHtml(uni)}, ngành ${escapeHtml(mj)}">${count}</td>`;
                 }
                 return `<td style="color: ${count > 0 ? "#334155" : "#94a3b8"};">${count}</td>`;
               })
