@@ -4159,17 +4159,6 @@
               <h3>Tỷ lệ hoàn thành chương trình</h3>
             </div>
             <div class="card-body">
-              <p style="margin-bottom: 12px">
-                Kết quả được HR xác nhận riêng cho từng lượt tham gia chương
-                trình. Hoàn thành A không tự làm hoàn thành B; trạng thái hồ sơ
-                không quyết định kết quả này.
-              </p>
-              <p class="text-muted" style="margin-bottom: 16px">
-                Khoảng ngày lọc theo thời gian chương trình có giao với khoảng
-                chọn. Tổng chung đếm lượt tham gia, không phải số người duy
-                nhất; có thể chọn chương trình CLOSED để đánh giá khóa đã kết
-                thúc.
-              </p>
               <form
                 id="crFilters"
                 style="
@@ -15036,17 +15025,11 @@
           cards.append(card);
         }
         summary.append(cards);
-        summary.append(
-          crElement(
-            "p",
-            `Số thực tập sinh duy nhất: ${s.uniqueInterns ?? s.total}. Tỷ lệ tính theo lượt tham gia.`,
-          ),
-        );
         if (s.pendingReview)
           summary.append(
             crElement(
               "p",
-              `${s.pendingReview} lượt chưa có lần cập nhật kết quả. HR mở Chương trình thực tập → Thực tập sinh & mentor để rà soát/xác nhận.`,
+              `${s.pendingReview} lượt chưa cập nhật kết quả.`,
               "text-muted",
             ),
           );
@@ -15054,7 +15037,7 @@
           summary.append(
             crElement(
               "p",
-              `${s.unknownStatus} hồ sơ có trạng thái thiếu hoặc ngoài danh mục, đang được tính vào nhóm chưa hoàn thành.`,
+              `${s.unknownStatus} lượt cần kiểm tra trạng thái kết quả.`,
               "text-muted",
             ),
           );
