@@ -17,7 +17,12 @@ Trong backend sau npm ci:
 
 Test browser cần gói playwright có thể require được và Chromium tại /usr/bin/chromium, hoặc đặt CHROMIUM_PATH. Không thêm phụ thuộc browser vào ứng dụng.
 
+## Bổ sung vòng này
+- Đổi SELECT sang ANY_VALUE(...) với GROUP BY BINARY (getInternOriginCounts, getCandidateFunnelByUniversity, listInternsByOrigin) để tương thích ONLY_FULL_GROUP_BY của MySQL 8.
+- Frontend: thêm iorIsClickable/iorTriggerAttrs; test browser có thêm kiểm tra nhóm Khác (chưa chạy được ở đây vì thiếu Chromium).
+
 ## Chưa xác nhận / giới hạn
+- Chưa chạy trên MySQL 8 thật: cần chạy server rồi node tests/test_intern_origin_report_api.js để xác nhận ANY_VALUE + GROUP BY BINARY không lỗi 1055.
 - Không có MySQL tại 127.0.0.1:3306 (ECONNREFUSED). Chưa chạy test API tích hợp. Đã thêm assertion status=Foo, groupBy=major và thiếu nhóm vào test API để chạy trên môi trường MySQL theo README.
-- Nhóm tổng hợp Khác chưa có ánh xạ thành viên. Bấm nhóm này vẫn trả rỗng; cần xử lý riêng trước khi khẳng định mọi nhóm đều khớp biểu đồ.
+- Nhóm tổng hợp Khác không có ánh xạ thành viên: frontend không còn cho bấm (biểu đồ, bảng, ma trận); ô ma trận vẫn hiện số. Backend vẫn trả rỗng nếu gọi trực tiếp university/major=Khác.
 - Không truy cập hoặc sửa DB cục bộ của người dùng.

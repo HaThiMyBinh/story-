@@ -25,6 +25,7 @@ const notificationsRouter = require("./routes/notifications.routes");
 const attendanceReportRouter = require("./routes/attendanceReport.routes");
 const allowancesRouter = require("./routes/allowances.routes");
 const supportRequestsRouter = require("./routes/supportRequests.routes");
+const completionRateRouter = require("./routes/completionRate.routes");
 const internOriginReportRouter = require("./routes/internOriginReport.routes");
 const {
   applicationEvents,
@@ -53,6 +54,7 @@ app.use(express.static(FRONTEND_DIR));
 app.use("/api/final-reports", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
 app.use("/api/me/attendance", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
 app.use("/api/reports/interns-by-origin", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
+app.use("/api/reports/completion-rate", (req, res, next) => { res.set("Cache-Control", "private, no-store"); next(); });
 app.use(apiAuthentication);
 ensurePermissionsFile();
 
@@ -79,6 +81,7 @@ app.use("/api", attendanceReportRouter);
 app.use("/api", allowancesRouter);
 app.use("/api", supportRequestsRouter);
 app.use("/api", internOriginReportRouter);
+app.use("/api", completionRateRouter);
 
 app.get("/login", (req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "login.html"));

@@ -1,8 +1,7 @@
-# Tải và chạy bản sửa US5
+# Tải và chạy dự án
 
-Tải US5-fixed.zip ở thư mục gốc của kho, hoặc chọn Code → Download ZIP.
+Bản US6: tải UserManagement_US6.zip tại thư mục gốc kho GitHub.
 
-Không đưa cấu hình riêng có mật khẩu DB/email lên GitHub.
-Trước khi chạy, sao chép backend/db_config.example.json thành backend/db_config.json và nhập cấu hình MySQL của bạn. Nếu cần gửi email, sao chép backend/mail_config.example.json thành backend/mail_config.json và cấu hình riêng.
+Trước khi chạy, sao chép backend/db_config.example.json thành backend/db_config.json và nhập cấu hình MySQL riêng. Nếu cần email, dùng backend/mail_config.example.json để tạo backend/mail_config.json. Không đưa mật khẩu lên GitHub.
 
-Xem FIXES_US5.md để biết kết quả kiểm thử và giới hạn còn lại.
+Xem FIXES_US6.md để biết định nghĩa hoàn thành, các kiểm tra đã chạy và giới hạn. Không import fixture kiểm thử vào DB người dùng.

@@ -14,7 +14,7 @@ async function main() {
     const calls = [];
     const query = async (sql, params) => {
       calls.push({ sql, params });
-      if (sql.startsWith('SELECT university AS value')) return [values.map(value => ({ value }))];
+      if (sql.startsWith('SELECT ANY_VALUE(university) AS value')) return [values.map(value => ({ value }))];
       assert.match(sql, /BINARY i\.university IN/);
       assert.deepEqual(Array.from(params).slice(0, expected.filter(x => x != null).length), expected.filter(x => x != null));
       if (unknown) assert.match(sql, /i\.university IS NULL/);
@@ -30,6 +30,9 @@ async function main() {
   }
   assert.match(dbSource, /GROUP BY BINARY university, BINARY major/);
   assert.match(dbSource, /GROUP BY BINARY university, status/);
+  assert.match(dbSource, /SELECT ANY_VALUE\(university\) AS university, ANY_VALUE\(major\) AS major/);
+  assert.match(dbSource, /SELECT ANY_VALUE\(university\) AS university, status/);
+  console.log('[PASS] SELECT dùng ANY_VALUE tương thích ONLY_FULL_GROUP_BY');
   console.log('[PASS] SQL preserves case/accent variants for label frequencies');
 }
 main().catch(err => { console.error(err); process.exitCode = 1; });

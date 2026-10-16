@@ -86,7 +86,8 @@ async function backfillInternMentorIds(targetPool = requireDb()) {
       SELECT ip_old.id, MIN(m.id) AS mentor_id
       FROM intern_profiles ip_old
       JOIN mentors m
-        ON LOWER(TRIM(m.full_name)) = LOWER(TRIM(ip_old.mentor_name))
+        ON LOWER(TRIM(m.full_name)) COLLATE utf8mb4_unicode_ci
+           = LOWER(TRIM(ip_old.mentor_name)) COLLATE utf8mb4_unicode_ci
       WHERE ip_old.mentor_id IS NULL
         AND ip_old.mentor_name IS NOT NULL
         AND TRIM(ip_old.mentor_name) <> ''
@@ -1729,7 +1730,7 @@ async function syncInternsWithAccounts() {
      LEFT JOIN candidate_profiles c ON c.user_id = u.id
      WHERE u.role_id = ?
        AND u.status NOT IN (${NON_INTERN_ACCOUNT_STATUSES_SQL})
-       AND NOT EXISTS (SELECT 1 FROM intern_profiles i WHERE LOWER(i.email) = LOWER(u.email))`,
+       AND NOT EXISTS (SELECT 1 FROM intern_profiles i WHERE LOWER(i.email) COLLATE utf8mb4_unicode_ci = LOWER(u.email) COLLATE utf8mb4_unicode_ci)`,
     [DEFAULT_INTERN_UNIVERSITY, DEFAULT_INTERN_STATUS, internRoleId],
   );
 
@@ -1738,13 +1739,13 @@ async function syncInternsWithAccounts() {
     `INSERT INTO users (name, email, password_hash, role_id, phone, status)
      SELECT i.full_name, i.email, ?, ?, NULLIF(i.phone, ''), 'ACTIVE'
      FROM intern_profiles i
-     WHERE NOT EXISTS (SELECT 1 FROM users u WHERE LOWER(u.email) = LOWER(i.email))`,
+     WHERE NOT EXISTS (SELECT 1 FROM users u WHERE LOWER(u.email) COLLATE utf8mb4_unicode_ci = LOWER(i.email) COLLATE utf8mb4_unicode_ci)`,
     [defaultHash, internRoleId],
   );
 
   // 3. Hồ sơ có SĐT trống mà tài khoản có SĐT -> bổ sung sang hồ sơ
   await db.query(
-    `UPDATE intern_profiles i JOIN users u ON LOWER(u.email) = LOWER(i.email)
+    `UPDATE intern_profiles i JOIN users u ON LOWER(u.email) COLLATE utf8mb4_unicode_ci = LOWER(i.email) COLLATE utf8mb4_unicode_ci
      SET i.phone = u.phone
      WHERE u.role_id = ? AND (i.phone IS NULL OR i.phone = '')
        AND u.phone IS NOT NULL AND u.phone <> ''`,
@@ -1753,10 +1754,11 @@ async function syncInternsWithAccounts() {
 
   // 4. Cặp đã khớp email -> đưa họ tên & SĐT của tài khoản về giống hồ sơ thực tập sinh
   await db.query(
-    `UPDATE users u JOIN intern_profiles i ON LOWER(i.email) = LOWER(u.email)
+    `UPDATE users u JOIN intern_profiles i ON LOWER(i.email) COLLATE utf8mb4_unicode_ci = LOWER(u.email) COLLATE utf8mb4_unicode_ci
      SET u.name = i.full_name, u.phone = NULLIF(i.phone, '')
      WHERE u.role_id = ?
-       AND (u.name <> i.full_name OR NOT (u.phone <=> NULLIF(i.phone, '')))`,
+       AND (u.name COLLATE utf8mb4_unicode_ci <> i.full_name COLLATE utf8mb4_unicode_ci
+         OR NOT (u.phone COLLATE utf8mb4_unicode_ci <=> NULLIF(i.phone, '') COLLATE utf8mb4_unicode_ci))`,
     [internRoleId],
   );
 
@@ -1764,7 +1766,7 @@ async function syncInternsWithAccounts() {
   const [conflicts] = await db.query(
     `SELECT i.email, r.role_name AS role
      FROM intern_profiles i
-     JOIN users u ON LOWER(u.email) = LOWER(i.email)
+     JOIN users u ON LOWER(u.email) COLLATE utf8mb4_unicode_ci = LOWER(i.email) COLLATE utf8mb4_unicode_ci
      JOIN roles r ON r.id = u.role_id
      WHERE u.role_id <> ?`,
     [internRoleId],
@@ -3598,7 +3600,7 @@ async function getInternOriginCounts(filters = {}) {
   }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const [rows] = await db.query(
-    `SELECT university, major, COUNT(*) AS count
+    `SELECT ANY_VALUE(university) AS university, ANY_VALUE(major) AS major, COUNT(*) AS count
        FROM intern_profiles
       ${where}
       GROUP BY BINARY university, BINARY major`,
@@ -3626,7 +3628,7 @@ async function getCandidateFunnelByUniversity(filters = {}) {
   }
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
   const [rows] = await db.query(
-    `SELECT university, status, COUNT(*) AS count
+    `SELECT ANY_VALUE(university) AS university, status, COUNT(*) AS count
        FROM candidate_profiles
       ${where}
       GROUP BY BINARY university, status`,
@@ -3667,7 +3669,7 @@ async function listInternsByOrigin(filters = {}) {
       conditions.push("1 = 0"); // Không trả danh sách sai nhóm khi thiếu thành viên bucket.
       continue;
     }
-    const [variants] = await db.query(`SELECT ${column} AS value FROM intern_profiles GROUP BY BINARY ${column}`);
+    const [variants] = await db.query(`SELECT ANY_VALUE(${column}) AS value FROM intern_profiles GROUP BY BINARY ${column}`);
     const matches = variants
       .filter((row) => unknownFlag
         ? row.value == null || ["", "chua cap nhat"].includes(filters.normalizeKey(row.value))
@@ -4094,7 +4096,40 @@ async function findSupportAttachment(id, requestId) {
 async function countSupportAttachments(requestId,kind) { const [r]=await requireDb().query("SELECT COUNT(*) n FROM support_request_attachments WHERE request_id=? AND kind=?",[requestId,kind]); return Number(r[0].n); }
 async function deleteSupportAttachment(id, requestId, kind) { const [r]=await requireDb().query("DELETE FROM support_request_attachments WHERE id=? AND request_id=? AND kind=?",[id,requestId,kind]); return r.affectedRows; }
 
+// US6: read-only membership rows. No GROUP BY: compatible with ONLY_FULL_GROUP_BY.
+// program_interns is unique on (program_id, intern_id); service deduplicates overall totals.
+async function getCompletionRateRows(filters = {}) {
+  const conditions = [];
+  const params = [];
+  if (filters.programId) { conditions.push("pi.program_id = ?"); params.push(filters.programId); }
+  if (filters.status) { conditions.push("BINARY TRIM(i.status) = BINARY ?"); params.push(filters.status); }
+  if (filters.from) { conditions.push("DATE(i.created_at) >= ?"); params.push(filters.from); }
+  if (filters.to) { conditions.push("DATE(i.created_at) <= ?"); params.push(filters.to); }
+  if (filters.q) {
+    const escaped = String(filters.q).replace(/([%_\\])/g, "\\$1");
+    const columns = ["i.full_name", "i.student_code", "i.university", "COALESCE(m.full_name COLLATE utf8mb4_unicode_ci, i.mentor_name COLLATE utf8mb4_unicode_ci)", "p.name"];
+    conditions.push(`(${columns.map(column => `${column} LIKE ? ESCAPE '\\\\'`).join(" OR ")})`);
+    params.push(...columns.map(() => `%${escaped}%`));
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const [rows] = await requireDb().query(`SELECT i.id, i.full_name AS fullName, i.student_code AS studentCode,
+    i.university, i.status, i.mentor_id AS mentorId, COALESCE(m.full_name COLLATE utf8mb4_unicode_ci, i.mentor_name COLLATE utf8mb4_unicode_ci) AS mentorName,
+    pi.program_id AS programId, p.name AS programName
+    FROM intern_profiles i
+    LEFT JOIN mentors m ON m.id = i.mentor_id
+    LEFT JOIN program_interns pi ON pi.intern_id = i.id
+    LEFT JOIN internship_programs p ON p.id = pi.program_id
+    ${where} ORDER BY i.id, pi.program_id`, params);
+  return rows;
+}
+async function getCompletionRatePrograms() {
+  const [rows] = await requireDb().query("SELECT id, name FROM internship_programs ORDER BY name, id");
+  return rows;
+}
+
 module.exports = {
+  getCompletionRateRows,
+  getCompletionRatePrograms,
   initDatabase,
   getPool,
   seedDepartmentsFromMentors,

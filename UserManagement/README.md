@@ -437,3 +437,10 @@ Chưa có: email thông báo, SLA/hạn xử lý, mẫu giấy tờ tự sinh, g
   - `npm run test:intern-origin-unit`: Unit test logic chuẩn hóa, gom nhóm, nhãn phổ biến nhất, sắp xếp, tính % làm tròn, top N + Khác, bảo toàn Chưa cập nhật, validate tham số và chống CSV injection (không cần MySQL).
   - `npm run test:intern-origin-api`: API test toàn diện kiểm tra RBAC (401/403/200), gom nhóm biến thể chữ hoa/thường/khoảng trắng trên MySQL thật, bộ lọc trạng thái và khoảng ngày, phễu tuyển dụng, phân trang danh sách chi tiết, bảo mật không lộ email/SĐT, và tải CSV đúng UTF-8 BOM.
 
+
+
+## US6 — Tỷ lệ hoàn thành chương trình
+
+HR có VIEW_REPORTS mở Báo cáo & Thống kê → Tỷ lệ hoàn thành chương trình. Báo cáo dùng trạng thái hồ sơ Hoàn thành và thành viên program_interns, phân tích theo chương trình/mentor, có bộ lọc, danh sách phân trang và CSV.
+
+Định nghĩa nghiệp vụ, API, cách chạy test, kết quả thực tế và giới hạn: xem [FIXES_US6.md](FIXES_US6.md).

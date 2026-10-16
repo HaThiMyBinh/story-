@@ -18,6 +18,9 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 
 // needsServer: cần MySQL và backend
 const SUITES = [
+  { name: "completion-rate-unit", file: "test_completion_rate_unit.js", needsServer: false },
+  { name: "completion-rate-api", file: "test_completion_rate_api.js", needsServer: true },
+  { name: "completion-rate-browser", file: "test_completion_rate_browser.js", needsServer: false, optionalBrowser: true },
   { name: "email-unit", file: "test_email_unit.js", needsServer: false },
   {
     name: "intern-filter-unit",
@@ -326,7 +329,7 @@ async function main() {
   console.log(" CHẠY TỰ ĐỘNG TOÀN BỘ BỘ KIỂM THỬ");
   console.log(line() + "\n");
 
-  let suites = SUITES;
+  let suites = SUITES.filter(s => !s.optionalBrowser || args.includes("--browser"));
   if (unitOnly) suites = suites.filter((s) => !s.needsServer);
   if (onlyFilters.length)
     suites = suites.filter((s) => onlyFilters.some((f) => s.name.includes(f)));
@@ -399,7 +402,7 @@ async function main() {
   }
 
   // Dọn dữ liệu test còn sót
-  if (needServer && !infraError) {
+  if (suites.some(s => s.needsServer && s.name !== "completion-rate-api") && !infraError) {
     console.log("\n" + line("-"));
     console.log(" >>> Dọn dữ liệu test còn sót");
     console.log(line("-"));
