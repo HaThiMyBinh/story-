@@ -4485,7 +4485,10 @@ async function findUserIdsByInternIds(internIds) {
   if (!internIds.length) return [];
   const [rows] = await requireDb().query(
     `SELECT ip.id AS internId, u.id AS userId FROM intern_profiles ip
-     JOIN users u ON LOWER(u.email) = LOWER(ip.email) WHERE ip.id IN (?)`,
+     JOIN users u ON
+       LOWER(CONVERT(u.email USING utf8mb4)) COLLATE utf8mb4_unicode_ci =
+       LOWER(CONVERT(ip.email USING utf8mb4)) COLLATE utf8mb4_unicode_ci
+     WHERE ip.id IN (?)`,
     [internIds],
   );
   return rows;

@@ -1,5 +1,18 @@
 # Thống nhất định dạng và xử lý lỗi
 
+## Bổ sung: thống nhất các controller còn lại và sửa thông báo hỗ trợ
+
+- Xóa 12 hàm sendError cục bộ trong allowances, applications, attendance, contracts, documents, email, evaluations, finalReports, programs, schedule, tasks và weeklyReports. Các controller dùng sendError/makeEndpoint từ endpoint.js; nhánh lỗi đọc danh sách trong interns.routes dùng sendRouteError. Các lỗi controller có cùng success=false, message và error; route cũ giữ dạng error để tương thích.
+- Lỗi không xác định và mọi 5xx chỉ trả thông báo chung, chi tiết được ghi ở server. Lỗi 4xx giữ thông báo nghiệp vụ và metadata; chuyển cảnh báo INCOMPLETE_EVALUATION của finalReports sang HttpError.extra để giữ code/details cho bước xác nhận trên giao diện.
+- Gửi email thử: thiếu cấu hình SMTP trả 400 với hướng dẫn; lỗi gửi ngoài dự kiến trả 500 an toàn qua hàm chung, không trả nguyên phản hồi SMTP. Chưa thử gửi email qua SMTP thật trong lần sửa này.
+- findUserIdsByInternIds chuyển hai biểu thức email sang utf8mb4 và cùng collation utf8mb4_unicode_ci trước khi so sánh không phân biệt hoa/thường. Giữ truy vấn tham số hóa, không ALTER TABLE hay cập nhật dữ liệu người dùng.
+- test_error_handling_unit.js hiện có 8 kiểm tra, bao phủ tất cả controller vừa chuyển, nhánh CSV của finalReports, interns.routes, SMTP và metadata 4xx. Tất cả đạt.
+- Chạy lại API trên DB thử nghiệm us6_test_results riêng, MySQL 8.0.46: users.email vẫn là utf8mb4_0900_ai_ci, intern_profiles.email vẫn là utf8mb4_unicode_ci. test_support_requests_api.js đạt 37/37, gồm thông báo SUPPORT_REQUEST_UPDATED trước đây lỗi; test_final_reports_api.js đạt 31/31, gồm xác nhận báo cáo thiếu đánh giá. Cả hai tiến trình thoát mã 0.
+- `node tests/run_all.js --unit`: 29 suite đạt, 0 lỗi, 0 bỏ qua (gồm 8 kiểm tra xử lý lỗi). `prettier --check backend Frontend`: đạt.
+- Không có tệp mới còn sót trong uploads sau test; permissions.json không đổi. Chưa chạy toàn bộ API suite/npm test.
+
+Các mục dưới đây ghi lại lần dọn định dạng trước đó; lỗi thông báo hỗ trợ được nhắc trong kết quả cũ đã được sửa và kiểm tra lại ở trên.
+
 ## Thay đổi
 
 - Chạy Prettier 3.6.2 cho `backend` và `Frontend`, dùng `.prettierrc.json` của repo (printWidth 80, 2 spaces, endOfLine lf) và `.prettierignore` hiện có. Không thêm dependency của ứng dụng. Các tệp JSON, uploads và node_modules vẫn được bỏ qua theo cấu hình repo.

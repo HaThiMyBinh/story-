@@ -167,3 +167,147 @@ test("support downloads sanitize async transfer errors as well as service errors
     service.download = original;
   }
 });
+
+test("all migrated controllers share the 4xx envelope and sanitize every 5xx", async () => {
+  const cases = [
+    ["allowances", "overview", "overview"],
+    ["applications", "list", "listApplications"],
+    ["attendance", "today", "getToday"],
+    ["contracts", "list", "list"],
+    ["documents", "getMyDocuments", "listMyDocuments"],
+    ["email", "listLogs", "listEmailLogs"],
+    ["evaluations", "getOverview", "getMentorOverview"],
+    ["finalReports", "preview", "preview"],
+    ["finalReports", "csv", "exportCsv"],
+    ["programs", "departments", "departments"],
+    ["schedule", "getMySchedule", "getScheduleForInternUser"],
+    ["tasks", "createTask", "createTask"],
+    ["weeklyReports", "submitMyReport", "submitMyReport"],
+  ];
+  await captureErrors(async () => {
+    for (const [name, action, method] of cases) {
+      const controller = require(`../controllers/${name}.controller`);
+      const service =
+        name === "email"
+          ? require("../db")
+          : require(`../services/${name}.service`);
+      const original = service[method];
+      assert.equal(typeof original, "function", `${name}.${method}`);
+      try {
+        for (const error of [
+          new Error("PRIVATE_DATABASE"),
+          new HttpError(500, "PRIVATE_DATABASE", { sql: "PRIVATE_SQL" }),
+          new HttpError(503, "PRIVATE_UPSTREAM"),
+          Object.assign(new Error("PRIVATE_OTHER"), { status: 502 }),
+          new HttpError(409, "Cần xác nhận", {
+            code: "INCOMPLETE_EVALUATION",
+            details: { notEvaluated: 2 },
+          }),
+          Object.assign(new Error("Yêu cầu không hợp lệ"), { status: 400 }),
+        ]) {
+          service[method] = async () => {
+            throw error;
+          };
+          const res = response();
+          await controller[action](
+            { user: {}, params: { id: "1" }, body: {}, query: {} },
+            res,
+          );
+          const isClient = error.status >= 400 && error.status < 500;
+          assert.equal(
+            res.statusCode,
+            isClient ? error.status : 500,
+            `${name}.${action}`,
+          );
+          assert.equal(res.body.success, false);
+          assert.equal(res.body.message, res.body.error);
+          assert.equal(
+            res.body.message,
+            isClient ? error.message : "Lỗi server, vui lòng thử lại sau!",
+          );
+          assert.ok(
+            !JSON.stringify(res.body).includes("PRIVATE"),
+            `${name}.${action}`,
+          );
+          if (error.extra) {
+            if (isClient) {
+              assert.equal(res.body.code, "INCOMPLETE_EVALUATION");
+              assert.deepEqual(res.body.details, { notEvaluated: 2 });
+            } else assert.equal(res.body.sql, undefined);
+          }
+        }
+      } finally {
+        service[method] = original;
+      }
+    }
+  });
+});
+
+test("intern listing preserves the route envelope and hides database details", async () => {
+  const db = require("../db");
+  const router = require("../routes/interns.routes");
+  const handler = router.stack
+    .find(
+      (layer) => layer.route?.path === "/interns" && layer.route.methods.get,
+    )
+    .route.stack.at(-1).handle;
+  const original = db.getAllStudents;
+  try {
+    await captureErrors(async () => {
+      db.getAllStudents = async () => {
+        throw new HttpError(503, "PRIVATE_SQL");
+      };
+      const res = response();
+      await handler({ user: { role: "Admin" }, query: {} }, res);
+      assert.equal(res.statusCode, 500);
+      assert.deepEqual(res.body, {
+        error: "Lỗi đọc danh sách hồ sơ thực tập sinh!",
+      });
+    });
+  } finally {
+    db.getAllStudents = original;
+  }
+});
+
+test("email test endpoint hides SMTP details and keeps configuration errors actionable", async () => {
+  const controller = require("../controllers/email.controller");
+  const config = require("../services/email/smtpConfig");
+  const queue = require("../services/email/emailQueue");
+  const originals = {
+    readConfig: config.readConfig,
+    isConfigured: config.isConfigured,
+    sendTestEmail: queue.sendTestEmail,
+  };
+  try {
+    config.readConfig = () => ({});
+    config.isConfigured = () => true;
+    await captureErrors(async () => {
+      for (const error of [
+        new Error("PRIVATE_SMTP_DETAILS"),
+        Object.assign(new Error("PRIVATE_SMTP_RESPONSE"), {
+          status: 503,
+          classification: "PERMANENT",
+        }),
+      ]) {
+        queue.sendTestEmail = async () => {
+          throw error;
+        };
+        const res = response();
+        await controller.testConfig({ body: { to: "hr@example.test" } }, res);
+        assert.equal(res.statusCode, 500);
+        assert.equal(res.body.message, res.body.error);
+        assert.ok(!JSON.stringify(res.body).includes("PRIVATE"));
+      }
+    });
+    config.isConfigured = () => false;
+    const missing = response();
+    await controller.testConfig({ body: { to: "hr@example.test" } }, missing);
+    assert.equal(missing.statusCode, 400);
+    assert.match(missing.body.message, /Chưa cấu hình SMTP/);
+    assert.equal(missing.body.error, missing.body.message);
+  } finally {
+    config.readConfig = originals.readConfig;
+    config.isConfigured = originals.isConfigured;
+    queue.sendTestEmail = originals.sendTestEmail;
+  }
+});

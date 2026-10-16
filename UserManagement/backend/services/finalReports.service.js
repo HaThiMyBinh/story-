@@ -523,10 +523,12 @@ async function finalize(rawId, user, body) {
       409,
       `Còn ${snapshot.summary.notEvaluated}/${snapshot.summary.totalInterns} thực tập sinh chưa được đánh giá trong phạm vi này. Hãy xác nhận nếu vẫn muốn chốt báo cáo!`,
     );
-    err.code = "INCOMPLETE_EVALUATION";
-    err.details = {
-      notEvaluated: snapshot.summary.notEvaluated,
-      totalInterns: snapshot.summary.totalInterns,
+    err.extra = {
+      code: "INCOMPLETE_EVALUATION",
+      details: {
+        notEvaluated: snapshot.summary.notEvaluated,
+        totalInterns: snapshot.summary.totalInterns,
+      },
     };
     throw err;
   }

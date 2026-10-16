@@ -1,22 +1,5 @@
+const { sendError } = require("./endpoint");
 const service = require("../services/allowances.service");
-const { HttpError } = require("../errors");
-
-function sendError(res, err) {
-  if (err instanceof HttpError) {
-    return res.status(err.status).json({
-      success: false,
-      message: err.message,
-      error: err.message,
-    });
-  }
-
-  console.error("[ALLOWANCES]", err);
-  return res.status(500).json({
-    success: false,
-    message: "Lỗi server, vui lòng thử lại sau!",
-    error: "Lỗi server, vui lòng thử lại sau!",
-  });
-}
 
 async function overview(req, res) {
   try {
@@ -27,7 +10,7 @@ async function overview(req, res) {
       data,
     });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "ALLOWANCES");
   }
 }
 
@@ -40,7 +23,7 @@ async function list(req, res) {
       data,
     });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "ALLOWANCES");
   }
 }
 
@@ -51,7 +34,7 @@ async function create(req, res) {
       .status(201)
       .json({ success: true, message: "Đã thêm khoản phụ cấp!", data });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "ALLOWANCES");
   }
 }
 
@@ -69,7 +52,7 @@ async function update(req, res) {
       data,
     });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "ALLOWANCES");
   }
 }
 
@@ -78,7 +61,7 @@ async function remove(req, res) {
     const data = await service.remove(req.params.id, req.params.allowanceId);
     return res.json({ success: true, message: "Đã xóa khoản phụ cấp!", data });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "ALLOWANCES");
   }
 }
 
@@ -91,7 +74,7 @@ async function listMine(req, res) {
       data,
     });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "ALLOWANCES");
   }
 }
 

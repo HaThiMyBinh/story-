@@ -41,8 +41,7 @@ async function handleGetInterns(req, res) {
         : students,
     );
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Lỗi đọc danh sách hồ sơ thực tập sinh!" });
+    return sendRouteError(res, err, "Lỗi đọc danh sách hồ sơ thực tập sinh!");
   }
 }
 router.get(

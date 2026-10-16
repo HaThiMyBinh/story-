@@ -1,18 +1,5 @@
+const { sendError } = require("./endpoint");
 const service = require("../services/programs.service");
-const { HttpError } = require("../errors");
-
-function sendError(res, err) {
-  const status = err instanceof HttpError ? err.status : 500;
-  if (status === 500) console.error("[PROGRAMS]", err);
-
-  const message =
-    status === 500 ? "Lỗi server, vui lòng thử lại sau!" : err.message;
-  return res.status(status).json({
-    success: false,
-    message,
-    error: message,
-  });
-}
 
 async function run(res, work, message, status = 200) {
   try {
@@ -22,7 +9,7 @@ async function run(res, work, message, status = 200) {
       data: await work(),
     });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "PROGRAMS");
   }
 }
 
@@ -52,7 +39,7 @@ async function removeDepartment(req, res) {
       data: null,
     });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "PROGRAMS");
   }
 }
 
@@ -139,7 +126,7 @@ async function remove(req, res) {
       data: null,
     });
   } catch (err) {
-    return sendError(res, err);
+    return sendError(res, err, "PROGRAMS");
   }
 }
 
