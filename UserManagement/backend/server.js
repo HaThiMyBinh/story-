@@ -25,6 +25,7 @@ const notificationsRouter = require("./routes/notifications.routes");
 const attendanceReportRouter = require("./routes/attendanceReport.routes");
 const allowancesRouter = require("./routes/allowances.routes");
 const supportRequestsRouter = require("./routes/supportRequests.routes");
+const meetingsRouter = require("./routes/meetings.routes");
 const completionRateRouter = require("./routes/completionRate.routes");
 const internOriginReportRouter = require("./routes/internOriginReport.routes");
 const {
@@ -74,6 +75,10 @@ app.use(
     next();
   },
 );
+app.use(["/api/meetings", "/api/me/meetings"], (req, res, next) => {
+  res.set("Cache-Control", "private, no-store");
+  next();
+});
 app.use(apiAuthentication);
 ensurePermissionsFile();
 
@@ -101,6 +106,7 @@ app.use("/api", allowancesRouter);
 app.use("/api", supportRequestsRouter);
 app.use("/api", internOriginReportRouter);
 app.use("/api", completionRateRouter);
+app.use("/api", meetingsRouter);
 
 app.get("/login", (req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, "login.html"));

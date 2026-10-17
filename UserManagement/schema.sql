@@ -98,9 +98,19 @@ CREATE TABLE IF NOT EXISTS `intern_profiles` (
 CREATE TABLE IF NOT EXISTS `email_logs` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `application_id` BIGINT NULL,
+  `meeting_id` BIGINT NULL,
+  `intern_id` BIGINT NULL,
+  `payload_json` LONGTEXT NULL,
+  `event_key` VARCHAR(191) CHARACTER SET ascii COLLATE ascii_bin NULL,
+  `notification_pending` TINYINT NOT NULL DEFAULT 0,
+  `processing_token` CHAR(36) NULL,
+  `processing_until` DATETIME NULL,
+  `next_attempt_at` DATETIME NULL,
+  UNIQUE KEY uq_email_event(event_key),
+  INDEX idx_email_meeting(meeting_id,id),
     `recipient_email` VARCHAR(150) NOT NULL,
     `recipient_name` VARCHAR(100) NULL,
-    `email_type` ENUM('APPROVED', 'REJECTED') NOT NULL,
+    `email_type` ENUM('APPROVED', 'REJECTED', 'MEETING_INVITE', 'MEETING_UPDATED', 'MEETING_CANCELLED', 'MEETING_REMINDER') NOT NULL,
     `subject` VARCHAR(255) NOT NULL,
     `status` ENUM('PENDING', 'RETRYING', 'SENT', 'FAILED') NOT NULL DEFAULT 'PENDING',
     `attempts` INT NOT NULL DEFAULT 0,
@@ -376,7 +386,7 @@ CREATE TABLE IF NOT EXISTS `work_schedule_assignments` (`id` BIGINT AUTO_INCREME
 CREATE TABLE IF NOT EXISTS `work_holidays` (`id` BIGINT AUTO_INCREMENT PRIMARY KEY, `holiday_date` DATE NOT NULL UNIQUE, `name` VARCHAR(255) NOT NULL, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE IF NOT EXISTS `leave_requests` (`id` BIGINT AUTO_INCREMENT PRIMARY KEY, `intern_id` BIGINT NOT NULL, `leave_type` ENUM('SICK','PERSONAL','EXAM','OTHER') NOT NULL, `from_date` DATE NOT NULL, `to_date` DATE NOT NULL, `reason` VARCHAR(500) NOT NULL, `status` ENUM('PENDING','APPROVED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING', `reviewed_by` BIGINT NULL, `reviewed_at` DATETIME NULL, `review_note` VARCHAR(500) NULL, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP, `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT `fk_leave_intern` FOREIGN KEY (`intern_id`) REFERENCES `intern_profiles`(`id`) ON DELETE CASCADE, CONSTRAINT `fk_leave_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `users`(`id`) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ============================================================================== 
+-- ==============================================================================
 -- DỮ LIỆU MẪU BAN ĐẦU (SEED DATA)
 -- ==============================================================================
 
@@ -459,3 +469,28 @@ CREATE TABLE IF NOT EXISTS support_request_attachments (
   CONSTRAINT fk_support_attachment_request FOREIGN KEY (request_id) REFERENCES support_requests(id) ON DELETE CASCADE,
   CONSTRAINT fk_support_attachment_uploader FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+CREATE TABLE IF NOT EXISTS meetings (
+ id BIGINT AUTO_INCREMENT PRIMARY KEY,
+ title VARCHAR(200) NOT NULL, description TEXT NULL,
+ start_at DATETIME NOT NULL, end_at DATETIME NOT NULL,
+ location VARCHAR(255) NULL, meeting_link VARCHAR(1000) NULL,
+ organizer_user_id BIGINT NULL, program_id BIGINT NULL,
+ status ENUM('SCHEDULED','CANCELLED') NOT NULL DEFAULT 'SCHEDULED',
+ sequence INT UNSIGNED NOT NULL DEFAULT 0, request_key VARCHAR(64) NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY uq_meeting_request (organizer_user_id,request_key),
+ INDEX idx_meeting_start_status (status,start_at),
+ CONSTRAINT fk_meeting_organizer FOREIGN KEY (organizer_user_id) REFERENCES users(id) ON DELETE SET NULL,
+ CONSTRAINT fk_meeting_program FOREIGN KEY (program_id) REFERENCES internship_programs(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+CREATE TABLE IF NOT EXISTS meeting_attendees (
+ meeting_id BIGINT NOT NULL, intern_id BIGINT NOT NULL,
+ PRIMARY KEY (meeting_id,intern_id), INDEX idx_meeting_attendee_intern(intern_id,meeting_id),
+ CONSTRAINT fk_meeting_attendee_meeting FOREIGN KEY (meeting_id) REFERENCES meetings(id) ON DELETE CASCADE,
+ CONSTRAINT fk_meeting_attendee_intern FOREIGN KEY (intern_id) REFERENCES intern_profiles(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

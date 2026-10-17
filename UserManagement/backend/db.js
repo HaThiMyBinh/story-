@@ -1,3 +1,7 @@
+const { randomUUID } = require("node:crypto");
+const { HttpError } = require("./errors");
+const meetingRules = require("./services/meetingRules.service");
+const { migrateMeetings } = require("./services/meetingsMigration");
 // db.js - Quản lý kết nối & truy vấn Database MySQL (nguồn dữ liệu DUY NHẤT)
 const mysql = require("mysql2/promise");
 const fs = require("fs");
@@ -881,6 +885,7 @@ async function initDatabase() {
     (3, 2);
   `);
 
+  await migrateMeetings(pool);
   isMysqlConnected = true;
   console.log(
     `[DATABASE] Đã kết nối MySQL thành công tới database '${config.database}'!`,
@@ -1844,7 +1849,7 @@ async function syncInternsWithAccounts() {
 
 // --- NHẬT KÝ GỬI EMAIL THÔNG BÁO KẾT QUẢ XÉT DUYỆT (email_logs) ---
 const EMAIL_LOG_COLUMNS = `
-  id, application_id AS applicationId, recipient_email AS recipientEmail,
+  id, application_id AS applicationId, meeting_id AS meetingId, intern_id AS internId, recipient_email AS recipientEmail,
   recipient_name AS recipientName, email_type AS emailType, subject,
   status, attempts, error_message AS errorMessage,
   created_at AS createdAt, updated_at AS updatedAt, sent_at AS sentAt
@@ -1874,7 +1879,11 @@ async function insertEmailLog({
 }
 
 // Cập nhật 1 phần thông tin nhật ký (chỉ ghi các trường thật sự được truyền vào)
-async function updateEmailLog(id, { status, attempts, errorMessage, sentAt }) {
+async function updateEmailLog(
+  id,
+  { status, attempts, errorMessage, sentAt, nextAttemptAt },
+  claimToken = null,
+) {
   const fields = [];
   const values = [];
   if (status !== undefined) {
@@ -1893,10 +1902,15 @@ async function updateEmailLog(id, { status, attempts, errorMessage, sentAt }) {
     fields.push("sent_at = ?");
     values.push(sentAt);
   }
+  if (nextAttemptAt !== undefined) {
+    fields.push("next_attempt_at = ?");
+    values.push(nextAttemptAt);
+  }
   if (fields.length === 0) return;
   values.push(id);
+  if (claimToken) values.push(claimToken);
   await requireDb().query(
-    `UPDATE email_logs SET ${fields.join(", ")} WHERE id = ?`,
+    `UPDATE email_logs SET ${fields.join(", ")} WHERE id = ?${claimToken ? " AND processing_token=?" : ""}`,
     values,
   );
 }
@@ -4804,7 +4818,489 @@ async function getCompletionRatePrograms() {
   return rows;
 }
 
+// ---------- Lịch họp + transactional email outbox (US8) ----------
+const MEETING_COLUMNS = `m.id,m.title,m.description,
+ DATE_FORMAT(m.start_at,'%Y-%m-%d %H:%i:%s') AS startAt,DATE_FORMAT(m.end_at,'%Y-%m-%d %H:%i:%s') AS endAt,
+ m.location,m.meeting_link AS meetingLink,m.organizer_user_id AS organizerUserId,
+ u.name AS organizerName,u.email AS organizerEmail,m.program_id AS programId,p.name AS programName,m.status,m.sequence,
+ DATE_FORMAT(m.created_at,'%Y-%m-%d %H:%i:%s') AS createdAt,DATE_FORMAT(m.updated_at,'%Y-%m-%d %H:%i:%s') AS updatedAt`;
+const MEETING_JOINS = `FROM meetings m LEFT JOIN users u ON u.id=m.organizer_user_id LEFT JOIN internship_programs p ON p.id=m.program_id`;
+function meetingScope(context, alias = "m") {
+  if (context.role === "HR") return { sql: "1=1", params: [] };
+  if (context.role === "Intern")
+    return {
+      sql: `EXISTS(SELECT 1 FROM meeting_attendees a WHERE a.meeting_id=${alias}.id AND a.intern_id=?)`,
+      params: [context.internId],
+    };
+  return {
+    sql: `EXISTS(SELECT 1 FROM meeting_attendees a WHERE a.meeting_id=${alias}.id) AND NOT EXISTS(SELECT 1 FROM meeting_attendees a JOIN intern_profiles ip ON ip.id=a.intern_id WHERE a.meeting_id=${alias}.id AND (ip.mentor_id IS NULL OR ip.mentor_id<>?))`,
+    params: [context.mentorId],
+  };
+}
+async function listMeetings(context, filters) {
+  const scope = meetingScope(context),
+    where = [scope.sql],
+    params = [...scope.params];
+  if (filters.from) {
+    where.push("m.end_at>?");
+    params.push(filters.from + " 00:00:00");
+  }
+  if (filters.to) {
+    where.push("m.start_at<DATE_ADD(?, INTERVAL 1 DAY)");
+    params.push(filters.to + " 00:00:00");
+  }
+  if (filters.status) {
+    where.push("m.status=?");
+    params.push(filters.status);
+  }
+  if (filters.q) {
+    where.push("m.title LIKE ? ESCAPE '='");
+    params.push("%" + filters.q.replace(/[=%_\\]/g, "=$&") + "%");
+  }
+  const [[{ total }]] = await requireDb().query(
+    `SELECT COUNT(*) AS total FROM meetings m WHERE ${where.join(" AND ")}`,
+    params,
+  );
+  const [rows] = await requireDb().query(
+    `SELECT ${MEETING_COLUMNS}, (SELECT COUNT(*) FROM meeting_attendees a WHERE a.meeting_id=m.id) AS attendeeCount ${MEETING_JOINS} WHERE ${where.join(" AND ")} ORDER BY m.start_at,m.id LIMIT ? OFFSET ?`,
+    [...params, filters.pageSize, (filters.page - 1) * filters.pageSize],
+  );
+  return {
+    items: rows.map(({ organizerEmail, ...r }) => r),
+    pagination: {
+      page: filters.page,
+      pageSize: filters.pageSize,
+      total: Number(total),
+      totalPages: Math.max(1, Math.ceil(total / filters.pageSize)),
+    },
+  };
+}
+async function findMeetingScoped(id, context) {
+  const scope = meetingScope(context);
+  const [rows] = await requireDb().query(
+    `SELECT ${MEETING_COLUMNS} ${MEETING_JOINS} WHERE m.id=? AND ${scope.sql}`,
+    [id, ...scope.params],
+  );
+  if (!rows.length) return null;
+  const { organizerEmail, ...meeting } = rows[0];
+  if (context.role === "Intern") return meeting;
+  const [attendees] = await requireDb().query(
+    `SELECT ip.id,ip.full_name AS fullName,ip.email FROM meeting_attendees a JOIN intern_profiles ip ON ip.id=a.intern_id WHERE a.meeting_id=? ORDER BY ip.full_name,ip.id`,
+    [id],
+  );
+  const [emailLogs] = await requireDb().query(
+    `SELECT ${EMAIL_LOG_COLUMNS} FROM email_logs WHERE meeting_id=? ${context.role === "Mentor" ? "AND intern_id IN (SELECT id FROM intern_profiles WHERE mentor_id=?)" : ""} ORDER BY id DESC`,
+    context.role === "Mentor" ? [id, context.mentorId] : [id],
+  );
+  return { ...meeting, attendees, emailLogs };
+}
+async function getMeetingOptions(context, q = "") {
+  const params = [],
+    where = [];
+  if (context.role === "Mentor") {
+    where.push("mentor_id=?");
+    params.push(context.mentorId);
+  }
+  if (q) {
+    where.push("(full_name LIKE ? ESCAPE '=' OR email LIKE ? ESCAPE '=')");
+    const pattern = "%" + q.replace(/[=%_\\]/g, "=$&") + "%";
+    params.push(pattern, pattern);
+  }
+  const [interns] = await requireDb().query(
+    `SELECT id,full_name AS fullName,email FROM intern_profiles ${where.length ? "WHERE " + where.join(" AND ") : ""} ORDER BY full_name,id LIMIT 500`,
+    params,
+  );
+  const [programs] = await requireDb().query(
+    `SELECT p.id,p.name FROM internship_programs p ${context.role === "Mentor" ? "WHERE EXISTS(SELECT 1 FROM program_interns pi JOIN intern_profiles ip ON ip.id=pi.intern_id WHERE pi.program_id=p.id AND ip.mentor_id=?)" : ""} ORDER BY p.name,p.id`,
+    context.role === "Mentor" ? [context.mentorId] : [],
+  );
+  return { interns, programs, limit: 500 };
+}
+async function insertMeetingEmailJobs(conn, meetingId, jobs) {
+  const ids = [];
+  for (const job of jobs) {
+    const [result] = await conn.query(
+      `INSERT INTO email_logs (application_id,meeting_id,intern_id,recipient_email,recipient_name,email_type,subject,status,attempts,error_message,payload_json,event_key,notification_pending)
+   VALUES(NULL,?,?,?,?,?,?,?,0,?,?,?,1) ON DUPLICATE KEY UPDATE id=LAST_INSERT_ID(id)`,
+      [
+        meetingId,
+        job.internId,
+        job.recipientEmail,
+        String(job.recipientName || "").slice(0, 100),
+        job.emailType,
+        job.subject,
+        job.status,
+        job.errorMessage,
+        job.payloadJson,
+        job.eventKey,
+      ],
+    );
+    ids.push(result.insertId);
+  }
+  return ids;
+}
+async function saveMeetingAtomic({
+  id = null,
+  context,
+  value = null,
+  cancel = false,
+  buildJobs,
+  calendarChanged,
+}) {
+  const requestedId = id;
+  const work = async (conn) => {
+    let id = requestedId;
+    let old = null,
+      oldIds = [];
+    if (id) {
+      const [rows] = await conn.query(
+        `SELECT ${MEETING_COLUMNS} ${MEETING_JOINS} WHERE m.id=? FOR UPDATE`,
+        [id],
+      );
+      if (!rows.length) throw new HttpError(404, "Không tìm thấy cuộc họp!");
+      old = rows[0];
+      const [members] = await conn.query(
+        "SELECT intern_id AS id FROM meeting_attendees WHERE meeting_id=? ORDER BY intern_id",
+        [id],
+      );
+      oldIds = members.map((r) => Number(r.id));
+    }
+    if (!id && value.requestKey) {
+      const [rows] = await conn.query(
+        `SELECT ${MEETING_COLUMNS} ${MEETING_JOINS} WHERE m.organizer_user_id=? AND m.request_key=? FOR UPDATE`,
+        [context.userId, value.requestKey],
+      );
+      if (rows.length) {
+        const previous = rows[0];
+        const [members] = await conn.query(
+          "SELECT intern_id AS id FROM meeting_attendees WHERE meeting_id=? ORDER BY intern_id",
+          [previous.id],
+        );
+        const same =
+          [
+            "title",
+            "description",
+            "startAt",
+            "endAt",
+            "location",
+            "meetingLink",
+            "programId",
+          ].every((k) => (previous[k] ?? "") === (value[k] ?? "")) &&
+          members.map((r) => Number(r.id)).join(",") ===
+            value.attendeeIds.join(",");
+        if (!same)
+          throw new HttpError(409, "Khóa tạo lịch đã dùng cho dữ liệu khác!");
+        if (context.role === "Mentor") {
+          const [[{ foreignCount }]] = await conn.query(
+            "SELECT COUNT(*) AS foreignCount FROM meeting_attendees a JOIN intern_profiles ip ON ip.id=a.intern_id WHERE a.meeting_id=? AND (ip.mentor_id IS NULL OR ip.mentor_id<>?)",
+            [previous.id, context.mentorId],
+          );
+          if (foreignCount)
+            throw new HttpError(403, "Không có quyền với người tham dự!");
+        }
+        return { id: previous.id, unchanged: true, emailCount: 0 };
+      }
+    }
+    const ids = [...new Set([...oldIds, ...(value?.attendeeIds || [])])].sort(
+      (a, b) => a - b,
+    );
+    const [profiles] = ids.length
+      ? await conn.query(
+          "SELECT id,full_name AS fullName,email,mentor_id AS mentorId FROM intern_profiles WHERE id IN (?) ORDER BY id FOR UPDATE",
+          [ids],
+        )
+      : [[]];
+    const before = profiles.filter((i) => oldIds.includes(Number(i.id)));
+    if (
+      context.role === "Mentor" &&
+      ((old && !before.length) ||
+        profiles.some((i) => Number(i.mentorId) !== context.mentorId))
+    )
+      throw new HttpError(
+        403,
+        "Mentor chỉ quản lý cuộc họp với thực tập sinh đang phụ trách!",
+      );
+    if (
+      old &&
+      (old.status === "CANCELLED" ||
+        meetingRules.toDate(old.startAt) <= new Date())
+    )
+      throw new HttpError(
+        409,
+        "Không thể thay đổi cuộc họp đã hủy hoặc đã bắt đầu!",
+      );
+    const after = cancel
+      ? before
+      : profiles.filter((i) => value.attendeeIds.includes(Number(i.id)));
+    if (!cancel && after.length !== value.attendeeIds.length)
+      throw new HttpError(400, "Có thực tập sinh không tồn tại!");
+    if (!cancel && meetingRules.toDate(value.startAt) <= new Date())
+      throw new HttpError(400, "Giờ bắt đầu đã qua, vui lòng chọn lại!");
+    if (!cancel && value.programId) {
+      const [programs] = await conn.query(
+        "SELECT id FROM internship_programs WHERE id=?",
+        [value.programId],
+      );
+      if (!programs.length)
+        throw new HttpError(400, "Chương trình không tồn tại!");
+      const [members] = await conn.query(
+        "SELECT intern_id FROM program_interns WHERE program_id=? AND intern_id IN (?)",
+        [value.programId, value.attendeeIds],
+      );
+      if (members.length !== value.attendeeIds.length)
+        throw new HttpError(
+          400,
+          "Người tham dự phải thuộc chương trình được chọn!",
+        );
+    }
+    let meeting;
+    if (!old) {
+      const [users] = await conn.query(
+        "SELECT id,name,email FROM users WHERE id=?",
+        [context.userId],
+      );
+      if (!users.length)
+        throw new HttpError(401, "Tài khoản không còn tồn tại!");
+      const [result] = await conn.query(
+        `INSERT INTO meetings(title,description,start_at,end_at,location,meeting_link,organizer_user_id,program_id,request_key) VALUES(?,?,?,?,?,?,?,?,?)`,
+        [
+          value.title,
+          value.description,
+          value.startAt,
+          value.endAt,
+          value.location,
+          value.meetingLink,
+          context.userId,
+          value.programId,
+          value.requestKey,
+        ],
+      );
+      id = result.insertId;
+      meeting = {
+        ...value,
+        id,
+        sequence: 0,
+        status: "SCHEDULED",
+        organizerUserId: context.userId,
+        organizerName: users[0].name,
+        organizerEmail: users[0].email,
+      };
+    } else {
+      meeting = {
+        ...old,
+        ...(cancel ? {} : value),
+        status: cancel ? "CANCELLED" : "SCHEDULED",
+      };
+      const material = cancel || calendarChanged(old, meeting, before, after);
+      meeting.sequence = Number(old.sequence) + (material ? 1 : 0);
+      const same =
+        !cancel &&
+        !material &&
+        ["title", "description", "programId"].every(
+          (k) => (old[k] ?? "") === (meeting[k] ?? ""),
+        );
+      if (same) return { id, unchanged: true, emailCount: 0 };
+      await conn.query(
+        "UPDATE meetings SET title=?,description=?,start_at=?,end_at=?,location=?,meeting_link=?,program_id=?,status=?,sequence=? WHERE id=?",
+        [
+          meeting.title,
+          meeting.description,
+          meeting.startAt,
+          meeting.endAt,
+          meeting.location,
+          meeting.meetingLink,
+          meeting.programId,
+          meeting.status,
+          meeting.sequence,
+          id,
+        ],
+      );
+      if (material) {
+        const calendarUpdated =
+          cancel || meetingRules.needsUpdate(old, meeting);
+        // Retained recipients still need any invitation waiting in the outbox.
+        // Adding another attendee alone must not silently discard that invitation.
+        await conn.query(
+          "UPDATE email_logs SET status='FAILED',error_message='Lịch họp đã thay đổi; không gửi lại sự kiện cũ.' WHERE meeting_id=? AND status IN ('PENDING','RETRYING') AND processing_token IS NULL" +
+            (calendarUpdated ? "" : " AND intern_id NOT IN (?)"),
+          calendarUpdated ? [id] : [id, value.attendeeIds],
+        );
+      }
+    }
+    if (!cancel) {
+      await conn.query("DELETE FROM meeting_attendees WHERE meeting_id=?", [
+        id,
+      ]);
+      await conn.query(
+        "INSERT INTO meeting_attendees(meeting_id,intern_id) VALUES ?",
+        [value.attendeeIds.map((internId) => [id, internId])],
+      );
+    }
+    const jobs = buildJobs(meeting, before, after, {
+      created: !old,
+      cancel,
+      old,
+    });
+    await insertMeetingEmailJobs(conn, id, jobs);
+    return { id, unchanged: false, emailCount: jobs.length };
+  };
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await withTransaction(work);
+    } catch (err) {
+      if (
+        attempt < 2 &&
+        ["ER_LOCK_DEADLOCK", "ER_DUP_ENTRY"].includes(err.code)
+      )
+        continue;
+      throw err;
+    }
+  }
+}
+async function enqueueMeetingReminder(id, hours, sequence, buildJobs) {
+  return withTransaction(async (conn) => {
+    const [rows] = await conn.query(
+      `SELECT ${MEETING_COLUMNS} ${MEETING_JOINS} WHERE m.id=? FOR UPDATE`,
+      [id],
+    );
+    const meeting = rows[0];
+    if (
+      !meeting ||
+      meeting.status !== "SCHEDULED" ||
+      Number(meeting.sequence) !== Number(sequence) ||
+      meetingRules.reminderSlot(meeting) !== hours
+    )
+      return 0;
+    const [attendees] = await conn.query(
+      "SELECT ip.id,ip.full_name AS fullName,ip.email FROM meeting_attendees a JOIN intern_profiles ip ON ip.id=a.intern_id WHERE a.meeting_id=?",
+      [id],
+    );
+    const jobs = buildJobs(meeting, [], attendees, { reminderHours: hours });
+    const [existing] = await conn.query(
+      "SELECT event_key FROM email_logs WHERE meeting_id=?",
+      [id],
+    );
+    const keys = new Set(existing.map((r) => r.event_key));
+    const fresh = jobs.filter((j) => !keys.has(j.eventKey));
+    await insertMeetingEmailJobs(conn, id, fresh);
+    return fresh.length;
+  });
+}
+async function listMeetingReminderCandidates() {
+  const [rows] = await requireDb().query(
+    "SELECT id,sequence,DATE_FORMAT(start_at,'%Y-%m-%d %H:%i:%s') AS startAt FROM meetings WHERE status='SCHEDULED' AND start_at>NOW() AND start_at<=DATE_ADD(NOW(),INTERVAL ? HOUR) ORDER BY start_at,id",
+    [Math.max(...meetingRules.REMINDER_HOURS)],
+  );
+  return rows;
+}
+async function findMeetingEmailPayload(id) {
+  const [rows] = await requireDb().query(
+    "SELECT payload_json AS payloadJson FROM email_logs WHERE id=? AND meeting_id IS NOT NULL",
+    [id],
+  );
+  if (!rows[0])
+    throw new HttpError(404, "Không tìm thấy dữ liệu email lịch họp!");
+  return JSON.parse(rows[0].payloadJson);
+}
+async function listMeetingEmailJobs() {
+  const [rows] = await requireDb().query(
+    `SELECT ${EMAIL_LOG_COLUMNS} FROM email_logs WHERE meeting_id IS NOT NULL AND status IN ('PENDING','RETRYING') AND (processing_until IS NULL OR processing_until<UTC_TIMESTAMP()) AND (next_attempt_at IS NULL OR next_attempt_at<=UTC_TIMESTAMP()) ORDER BY id LIMIT 200`,
+  );
+  return rows;
+}
+async function prepareMeetingRetry(id) {
+  const [result] = await requireDb().query(
+    "UPDATE email_logs SET status='PENDING',next_attempt_at=NULL WHERE id=? AND meeting_id IS NOT NULL AND status IN ('FAILED','RETRYING') AND (processing_until IS NULL OR processing_until<UTC_TIMESTAMP())",
+    [id],
+  );
+  return result.affectedRows > 0;
+}
+async function claimMeetingEmail(id, manual = false) {
+  const token = randomUUID();
+  const [r] = await requireDb().query(
+    "UPDATE email_logs SET processing_token=?,processing_until=DATE_ADD(UTC_TIMESTAMP(),INTERVAL 120 SECOND) WHERE id=? AND meeting_id IS NOT NULL AND status IN ('PENDING','RETRYING','FAILED') AND (processing_until IS NULL OR processing_until<UTC_TIMESTAMP()) AND (? OR next_attempt_at IS NULL OR next_attempt_at<=UTC_TIMESTAMP())",
+    [token, id, manual],
+  );
+  if (!r.affectedRows) return null;
+  const row = await findEmailLogById(id);
+  return { ...row, token };
+}
+async function releaseMeetingEmail(id, token) {
+  await requireDb().query(
+    "UPDATE email_logs SET processing_token=NULL,processing_until=NULL WHERE id=? AND processing_token=?",
+    [id, token],
+  );
+}
+async function meetingEmailIsCurrent(payload) {
+  const m = payload.meeting;
+  const [rows] = await requireDb().query(
+    `SELECT m.status,m.sequence,m.location,m.meeting_link AS meetingLink,DATE_FORMAT(m.start_at,'%Y-%m-%d %H:%i:%s') AS startAt,DATE_FORMAT(m.end_at,'%Y-%m-%d %H:%i:%s') AS endAt,ip.email,
+ EXISTS(SELECT 1 FROM meeting_attendees a WHERE a.meeting_id=m.id AND a.intern_id=ip.id) AS attends
+ FROM meetings m JOIN intern_profiles ip ON ip.id=? WHERE m.id=?`,
+    [payload.recipient.id, m.id],
+  );
+  const row = rows[0];
+  if (
+    !row ||
+    Number(row.sequence) < Number(m.sequence) ||
+    String(row.email || "")
+      .trim()
+      .toLowerCase() !==
+      String(payload.recipient.email || "")
+        .trim()
+        .toLowerCase()
+  )
+    return false;
+  if (payload.type === "MEETING_CANCELLED")
+    return row.status === "CANCELLED" || (payload.removed && !row.attends);
+  return (
+    row.status === "SCHEDULED" &&
+    !meetingRules.needsUpdate(row, m) &&
+    Boolean(row.attends) &&
+    meetingRules.toDate(row.startAt) > new Date()
+  );
+}
+async function listMeetingNotificationJobs() {
+  const [rows] = await requireDb().query(
+    `SELECT id,intern_id AS internId,event_key AS eventKey,payload_json AS payloadJson
+     FROM email_logs WHERE meeting_id IS NOT NULL AND notification_pending=1
+     AND EXISTS(SELECT 1 FROM intern_profiles ip JOIN users u ON
+       LOWER(CONVERT(u.email USING utf8mb4)) COLLATE utf8mb4_unicode_ci =
+       LOWER(CONVERT(ip.email USING utf8mb4)) COLLATE utf8mb4_unicode_ci
+       WHERE ip.id=email_logs.intern_id)
+     ORDER BY id LIMIT 200`,
+  );
+  return rows;
+}
+async function discardMeetingNotification(id) {
+  await requireDb().query(
+    "UPDATE email_logs SET notification_pending=0 WHERE id=?",
+    [id],
+  );
+}
+async function acknowledgeMeetingNotification(id, key) {
+  await requireDb().query(
+    "UPDATE email_logs SET notification_pending=0 WHERE id=? AND EXISTS(SELECT 1 FROM notifications WHERE dedupe_key=?)",
+    [id, key],
+  );
+}
+
 module.exports = {
+  listMeetings,
+  findMeetingScoped,
+  getMeetingOptions,
+  saveMeetingAtomic,
+  enqueueMeetingReminder,
+  listMeetingReminderCandidates,
+  findMeetingEmailPayload,
+  listMeetingEmailJobs,
+  prepareMeetingRetry,
+  claimMeetingEmail,
+  releaseMeetingEmail,
+  meetingEmailIsCurrent,
+  listMeetingNotificationJobs,
+  acknowledgeMeetingNotification,
+  discardMeetingNotification,
   setProgramCompletion,
   getCompletionRateRows,
   getCompletionRatePrograms,

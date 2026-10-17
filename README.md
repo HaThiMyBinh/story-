@@ -1,8 +1,10 @@
 # UserManagement
 
-[Tải ZIP mới nhất — US7 xuất Excel/PDF](UserManagement_US7.zip)
+[Tải ZIP mới nhất — US8 lịch họp và email](UserManagement_US8.zip)
 
-US7 thêm Excel và in PDF cho bốn báo cáo; cập nhật bằng `npm ci` trong backend. [Thay đổi và kết quả test US7](UserManagement/FIXES_US7.md).
+US8 thêm lịch họp HR/Mentor/Intern, email mời/cập nhật/hủy/nhắc, gửi lại và file lịch ICS. Trong backend: `npm ci` → `npm run migrate:meetings` → `npm start`. Giữ cấu hình riêng, không import lại schema/seed vào DB đang dùng. [Thay đổi, kết quả test và giới hạn US8](UserManagement/FIXES_US8.md).
+
+[US7 xuất Excel/PDF](UserManagement/FIXES_US7.md).
 
 HR xác nhận kết quả riêng từng khóa; hoàn thành A không tự hoàn thành B. Chặn xếp trùng lịch và giữ kết quả đã chốt. Báo cáo có lọc, drill-down và CSV.
 

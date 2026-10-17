@@ -70,7 +70,11 @@
     "test:responsive-browser": "node tests/test_responsive_browser.js",
     "test:export-unit": "node tests/test_export_unit.js",
     "test:export-api": "node tests/test_export_api.js",
-    "test:export-browser": "node tests/test_export_browser.js"
+    "test:export-browser": "node tests/test_export_browser.js",
+    "migrate:meetings": "node scripts/migrate_meetings.js",
+    "test:meetings-unit": "node tests/test_meetings_unit.js",
+    "test:meetings-api": "node tests/test_meetings_api.js",
+    "test:meetings-browser": "node tests/test_meetings_browser.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

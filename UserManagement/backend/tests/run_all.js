@@ -18,6 +18,19 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 
 // needsServer: cần MySQL và backend
 const SUITES = [
+  { name: "meetings-unit", file: "test_meetings_unit.js", needsServer: false },
+  {
+    name: "meetings-api",
+    file: "test_meetings_api.js",
+    needsServer: true,
+    optionalMeetingWrites: true,
+  },
+  {
+    name: "meetings-browser",
+    file: "test_meetings_browser.js",
+    needsServer: false,
+    optionalBrowser: true,
+  },
   { name: "export-unit", file: "test_export_unit.js", needsServer: false },
   { name: "export-api", file: "test_export_api.js", needsServer: true },
   {
@@ -421,7 +434,8 @@ async function main() {
   let suites = SUITES.filter(
     (s) =>
       (!s.optionalBrowser || args.includes("--browser")) &&
-      (!s.optionalWrites || args.includes("--program-results-write-tests")),
+      (!s.optionalWrites || args.includes("--program-results-write-tests")) &&
+      (!s.optionalMeetingWrites || args.includes("--meeting-write-tests")),
   );
   if (unitOnly) suites = suites.filter((s) => !s.needsServer);
   if (onlyFilters.length)
@@ -501,6 +515,7 @@ async function main() {
         s.needsServer &&
         ![
           "completion-rate-api",
+          "meetings-api",
           "program-completion-api",
           "program-completion-browser",
         ].includes(s.name),
