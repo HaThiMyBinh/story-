@@ -1,3 +1,4 @@
+const { serveFrontendStatic } = require("./frontend_static");
 // optionalBrowser: production HTML with isolated API fixtures; no database writes.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -78,17 +79,8 @@ async function main() {
             body: JSON.stringify(data),
           });
         assert.equal(u.hostname, "us8.test", "No external runtime dependency");
-        const frontend = path.join(__dirname, "../../Frontend");
-        if (u.pathname === "/index.html")
-          return route.fulfill({
-            contentType: "text/html",
-            body: fs.readFileSync(path.join(frontend, "index.html")),
-          });
-        if (u.pathname.startsWith("/assets/fontawesome/"))
-          return route.fulfill({
-            contentType: u.pathname.endsWith("css") ? "text/css" : "font/woff2",
-            body: fs.readFileSync(path.join(frontend, u.pathname.slice(1))),
-          });
+        const served = serveFrontendStatic(route);
+        if (served) return served;
         if (u.pathname === "/api/permissions")
           return json({
             HR: ["VIEW_REPORTS"],

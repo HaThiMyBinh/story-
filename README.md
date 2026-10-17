@@ -1,6 +1,8 @@
 # UserManagement
 
-[Tải ZIP mới nhất — US8 lịch họp và email](UserManagement_US8.zip)
+[Tải ZIP mới nhất — tách frontend, giữ nguyên chức năng](UserManagement_FRONTEND_SPLIT.zip)
+
+Frontend được tách CSS/JS thành file riêng, không đổi giao diện hay logic. [Số liệu và kết quả kiểm thử](UserManagement/FIXES_FRONTEND_SPLIT.md). [Bản US8 trước refactor](UserManagement_US8.zip).
 
 US8 thêm lịch họp HR/Mentor/Intern, email mời/cập nhật/hủy/nhắc, gửi lại và file lịch ICS. Trong backend: `npm ci` → `npm run migrate:meetings` → `npm start`. Giữ cấu hình riêng, không import lại schema/seed vào DB đang dùng. [Thay đổi, kết quả test và giới hạn US8](UserManagement/FIXES_US8.md).
 

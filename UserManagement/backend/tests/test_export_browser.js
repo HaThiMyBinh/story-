@@ -1,3 +1,4 @@
+const { serveFrontendStatic } = require("./frontend_static");
 // optionalBrowser: real production page, mocked JSON/XLSX APIs; never opens the real print dialog.
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -11,8 +12,7 @@ const finalService = require("../services/finalReports.service");
 const originService = require("../services/internOriginReport.service");
 const completionService = require("../services/completionRate.service");
 async function main() {
-  const frontend = path.join(__dirname, "../../Frontend"),
-    model = fixtures();
+  const model = fixtures();
   const final = {
     id: 7,
     title: name,
@@ -150,18 +150,8 @@ async function main() {
         "us7.test",
         "No runtime CDN/network dependencies",
       );
-      if (url.pathname === "/index.html")
-        return route.fulfill({
-          contentType: "text/html",
-          body: fs.readFileSync(path.join(frontend, "index.html"), "utf8"),
-        });
-      if (url.pathname.startsWith("/assets/fontawesome/"))
-        return route.fulfill({
-          contentType: url.pathname.endsWith(".css")
-            ? "text/css"
-            : "font/woff2",
-          body: fs.readFileSync(path.join(frontend, url.pathname.slice(1))),
-        });
+      const served = serveFrontendStatic(route);
+      if (served) return served;
       if (url.pathname === "/api/permissions")
         return json({
           HR: ["VIEW_REPORTS"],

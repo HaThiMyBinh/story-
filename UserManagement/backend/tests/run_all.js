@@ -18,6 +18,18 @@ const INSTALL_TIMEOUT_MS = 5 * 60 * 1000;
 
 // needsServer: cần MySQL và backend
 const SUITES = [
+  {
+    name: "frontend-split",
+    file: "test_frontend_split.js",
+    needsServer: false,
+    optionalBrowser: true,
+  },
+  {
+    name: "intern-origin-browser",
+    file: "test_intern_origin_browser.js",
+    needsServer: false,
+    optionalBrowser: true,
+  },
   { name: "meetings-unit", file: "test_meetings_unit.js", needsServer: false },
   {
     name: "meetings-api",

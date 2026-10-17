@@ -74,7 +74,9 @@
     "migrate:meetings": "node scripts/migrate_meetings.js",
     "test:meetings-unit": "node tests/test_meetings_unit.js",
     "test:meetings-api": "node tests/test_meetings_api.js",
-    "test:meetings-browser": "node tests/test_meetings_browser.js"
+    "test:meetings-browser": "node tests/test_meetings_browser.js",
+    "test:frontend-split": "node tests/test_frontend_split.js",
+    "test:intern-origin-browser": "node tests/test_intern_origin_browser.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
