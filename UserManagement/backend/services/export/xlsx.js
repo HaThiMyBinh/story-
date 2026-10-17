@@ -138,7 +138,7 @@ async function renderXlsx(model) {
       row.height = Math.min(
         409,
         Math.max(
-          30,
+          n === header.number ? 30 : 18,
           ...Array.from(row.values).map(
             (v) => Math.ceil(String(v ?? "").length / 25) * 15,
           ),

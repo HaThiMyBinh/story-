@@ -1,6 +1,7 @@
 // Bọc một hàm xử lý thành handler Express: trả { success, message, data }, dữ liệu cá nhân không cache,
 // lỗi HttpError trả đúng mã, lỗi khác trả 500 và ghi log (không lộ chi tiết cho client).
-const { publicError } = require("../errors");
+const { HttpError, publicError } = require("../errors");
+const { renderXlsx, filenames, MIME } = require("../services/export/xlsx");
 
 function sendError(res, err, tag) {
   const failure = publicError(err, "Lỗi server, vui lòng thử lại sau!", tag);
@@ -28,17 +29,11 @@ function makeXlsxEndpoint(tag, modelForRequest) {
   return async (req, res) => {
     res.set("Cache-Control", "private, no-store");
     try {
-      const {
-        renderXlsx,
-        filenames,
-        MIME,
-      } = require("../services/export/xlsx");
       if (
         Object.values(req.query || {}).some(
           (value) => typeof value !== "string",
         )
       ) {
-        const { HttpError } = require("../errors");
         throw new HttpError(400, "Tham số xuất không hợp lệ hoặc bị lặp!");
       }
       const model = await modelForRequest(req);

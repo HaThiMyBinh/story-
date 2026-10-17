@@ -26,6 +26,10 @@ Chạy trong `backend`: `npm ci`, cấu hình MySQL theo project rồi `npm star
 - Kiểm tra in riêng bằng Chromium với 150 dòng: tạo PDF thử 6 trang, pdftotext xác nhận header lặp 6 lần và số “Trang 1 / 6” đến “Trang 6 / 6”. Đây là kiểm tra bằng browser headless, không phải thử hộp thoại in thật.
 - `prettier --check backend Frontend`: **PASS**. Các test mới đã đăng ký trong tests/run_all.js và package.json; browser cần Playwright/Chromium sẵn trong môi trường (có thể đặt CHROMIUM_PATH), không thêm chúng vào dependency ứng dụng, và là optionalBrowser (`node tests/run_all.js --unit --browser --only export-browser`).
 
+## Tinh chỉnh độ cao dòng và import
+
+Dòng dữ liệu ngắn dùng tối thiểu 18pt, hàng tiêu đề giữ 30pt; ô dài vẫn wrap và tăng chiều cao. `endpoint.js` chuyển import HttpError và module XLSX lên đầu file. Chạy lại test_export_unit.js: 5/5 đạt, test_error_handling_unit.js: 9/9 đạt; đọc lại workbook xác nhận header 30pt, dòng ngắn 18pt và dòng dài cao hơn. Đã chạy Prettier cho hai tệp sửa. Không chạy lại API/browser trong lần tinh chỉnh này.
+
 ## Giới hạn đã biết
 
 Chưa mở XLSX bằng Excel hoặc LibreOffice thật; đã đọc lại bằng ExcelJS. Chưa chạy toàn bộ các API suite/npm test, Safari/Firefox, điện thoại thật hoặc thao tác lưu PDF trong hộp thoại thật. Số trang dùng CSS @page margin boxes đã kiểm tra trên Chromium; hỗ trợ ở trình duyệt khác tùy phiên bản. Không đóng gói node_modules hoặc cấu hình chứa mật khẩu.
